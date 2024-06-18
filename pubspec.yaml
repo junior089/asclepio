@@ -1,19 +1,20 @@
 name: health_app
-description: A health monitoring app made with Flutter.
-publish_to: 'none' # Remove this line if you intend to publish the package
+description: A Flutter health tracking app.
 
+publish_to: 'none' # Remova se desejar publicar
 version: 1.0.0+1
 
 environment:
-  sdk: ">=2.17.0 <3.0.0"
+  sdk: ">=2.17.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.2
-  flutter_local_notifications: ^9.2.0
+  google_fonts: ^6.2.1  # Versão estável que resolve o conflito
   provider: ^6.0.5
-  google_fonts: ^3.0.1
+  image_picker: ^0.8.7+3
+
 
 dev_dependencies:
   flutter_test:
@@ -21,12 +22,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  assets:
-    - assets/ # Diretório para imagens, se houver
-
-  fonts:
-    - family: Roboto
-      fonts:
-        - asset: fonts/Roboto-Regular.ttf
-        - asset: fonts/Roboto-Bold.ttf
-          weight: 700

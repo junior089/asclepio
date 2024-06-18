@@ -13,7 +13,7 @@ class HealthApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Health App',
+      title: 'Asclépio',
       theme: ThemeData(
         primarySwatch: Colors.teal,
         brightness: Brightness.light,
