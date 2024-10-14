@@ -149,7 +149,7 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Meu conteúdo diário · Hoje',
+            'conteúdo diário · Hoje',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 10),
