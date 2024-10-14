@@ -13,24 +13,76 @@ class WaterConsumptionPage extends StatefulWidget {
 class _WaterConsumptionPageState extends State<WaterConsumptionPage> {
   double _dailyWaterIntake = 0;
   double _waterConsumed = 0;
-  List<double> _consumptionLog = [];
+  List<Map<String, dynamic>> _consumptionLog = [];
+  double _customAmount = 0;
 
   @override
+
   void initState() {
     super.initState();
     _calculateDailyWaterIntake();
   }
 
   void _calculateDailyWaterIntake() {
-    _dailyWaterIntake = widget.weight * 30;
-    setState(() {});
+    setState(() {
+      _dailyWaterIntake = widget.weight * 30;
+    });
   }
 
   void _addWaterConsumption(double amount) {
     setState(() {
       _waterConsumed += amount;
-      _consumptionLog.add(amount);
+      _consumptionLog.add({
+        'amount': amount,
+        'time': DateTime.now(),
+      });
     });
+  }
+
+
+
+  void _removeConsumption(int index) {
+    setState(() {
+      _waterConsumed -= _consumptionLog[index]['amount'];
+      _consumptionLog.removeAt(index);
+    });
+  }
+
+  void _addCustomAmount() {
+    if (_customAmount > 0) {
+      _addWaterConsumption(_customAmount);
+      _customAmount = 0; // Reset após a adição
+    }
+  }
+
+  Future<void> _showCustomAmountDialog() async {
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Adicionar Água Personalizada'),
+          content: TextField(
+            decoration: const InputDecoration(
+              labelText: 'Quantidade (ml)',
+              border: OutlineInputBorder(),
+            ),
+            keyboardType: TextInputType.number,
+            onChanged: (value) {
+              _customAmount = double.tryParse(value) ?? 0;
+            },
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Adicionar'),
+              onPressed: () {
+                _addCustomAmount();
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -56,7 +108,7 @@ class _WaterConsumptionPageState extends State<WaterConsumptionPage> {
                 '${(progress * 100).toStringAsFixed(1)}%',
                 style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
-              progressColor: Colors.blueAccent,
+              progressColor: Colors.greenAccent,
               backgroundColor: Colors.blue[100]!,
             ),
             const SizedBox(height: 30),
@@ -68,10 +120,7 @@ class _WaterConsumptionPageState extends State<WaterConsumptionPage> {
               ],
             ),
             const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [100, 250, 500].map((amount) => _buildAddButton(amount.toDouble())).toList(),
-            ),
+            _buildAddWaterButtons(),
             const SizedBox(height: 30),
             const Text(
               'Histórico de Consumo',
@@ -81,12 +130,16 @@ class _WaterConsumptionPageState extends State<WaterConsumptionPage> {
               child: ListView.builder(
                 itemCount: _consumptionLog.length,
                 itemBuilder: (context, index) {
-                  return ListTile(
-                    leading: Icon(Icons.local_drink, color: Colors.blue[300]),
-                    title: Text('${_consumptionLog[index].toStringAsFixed(1)} ml'),
-                    subtitle: Text('Hora: ${TimeOfDay.now().format(context)}'),
-                    tileColor: index % 2 == 0 ? Colors.blue[50] : Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                  return Dismissible(
+                    key: Key(_consumptionLog[index]['time'].toString()),
+                    background: Container(color: Colors.red),
+                    onDismissed: (direction) {
+                      _removeConsumption(index);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Removido: ${_consumptionLog[index]['amount']} ml')),
+                      );
+                    },
+                    child: _buildConsumptionTile(index),
                   );
                 },
               ),
@@ -116,11 +169,36 @@ class _WaterConsumptionPageState extends State<WaterConsumptionPage> {
     );
   }
 
+  Widget _buildAddWaterButtons() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        _buildAddButton(100),
+        _buildAddButton(250),
+        _buildAddButton(500),
+        IconButton(
+          icon: const Icon(Icons.edit, color: Colors.blueAccent),
+          onPressed: _showCustomAmountDialog,
+        ),
+      ],
+    );
+  }
+
   Widget _buildAddButton(double amount) {
     return FloatingActionButton(
       onPressed: () => _addWaterConsumption(amount),
       backgroundColor: Colors.blueAccent,
       child: Text('${amount.toInt()} ml', style: const TextStyle(fontSize: 12)),
+    );
+  }
+
+  Widget _buildConsumptionTile(int index) {
+    return ListTile(
+      leading: Icon(Icons.local_drink, color: Colors.blue[300]),
+      title: Text('${_consumptionLog[index]['amount'].toStringAsFixed(1)} ml'),
+      subtitle: Text('Hora: ${_consumptionLog[index]['time'].toLocal().toString().split(' ')[1].split('.')[0]}'),
+      tileColor: index % 2 == 0 ? Colors.blue[50] : Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
     );
   }
 }

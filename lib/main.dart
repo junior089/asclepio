@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'models/health_data.dart';
 import 'pages/health_dashboard.dart';
-import 'pages/profile_page.dart';
+import 'pages/Profile/profile_page.dart';
 import 'pages/exercise_page.dart';
 import 'pages/Resources/resoucers_page.dart';
 import 'pages/NearbyHospitalsPage.dart';

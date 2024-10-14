@@ -1,7 +1,9 @@
+import 'package:asclepio/pages/Profile/avatar_selection_page.dart';
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
-import 'package:asclepio/pages/avatar_selection_page.dart';
-import 'resources/resoucers_page.dart';
+import '../resources/resoucers_page.dart';
+import 'weight_chart.dart';
+import 'symptoms_history.dart';
+import 'exercise_history.dart';
 
 class ProfilePage extends StatefulWidget {
   final String userName;
@@ -36,8 +38,8 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
 
   String _selectedAvatar = 'assets/avatars/avatar1.png';
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  List<FlSpot> _weightSpots = [];
   List<Map<String, String>> _symptomsHistory = [];
+  List<double> weightHistory = []; // Lista para armazenar o histórico de pesos
 
   @override
   void initState() {
@@ -61,20 +63,6 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     stepGoalController.dispose();
     newWeightController.dispose();
     super.dispose();
-  }
-
-  double calculateBMI() {
-    final weight = double.tryParse(weightController.text) ?? widget.weight;
-    final height = double.tryParse(heightController.text) ?? widget.height;
-    return weight / (height * height);
-  }
-
-  String getBMICategory() {
-    final bmi = calculateBMI();
-    if (bmi < 18.5) return "Abaixo do Peso";
-    if (bmi < 24.9) return "Peso Normal";
-    if (bmi < 29.9) return "Sobrepeso";
-    return "Obesidade";
   }
 
   void _showEditDialog(String title, TextEditingController controller) {
@@ -120,6 +108,10 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         break;
       case "Peso (kg)":
         weightController.text = value;
+        double? newWeight = double.tryParse(value);
+        if (newWeight != null) {
+          weightHistory.add(newWeight); // Adiciona o novo peso ao histórico
+        }
         break;
       case "Altura (m)":
         heightController.text = value;
@@ -153,37 +145,8 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     }
   }
 
-  void _updateWeightSpots() {
-    final newWeight = double.tryParse(newWeightController.text);
-    if (newWeight != null) {
-      final x = _weightSpots.length + 1;
-      _weightSpots.add(FlSpot(x.toDouble(), newWeight));
-      setState(() {});
-    }
-  }
-
-  void _addSymptom(String symptom) {
-    if (symptom.isNotEmpty) {
-      final timestamp = DateTime.now().toString();
-      _symptomsHistory.add({"symptom": symptom, "timestamp": timestamp});
-      setState(() {});
-    }
-  }
-
-  void _navigateToResourcesPage() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ResourcesPage(userWeight: widget.weight),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final bmi = calculateBMI();
-    final bmiCategory = getBMICategory();
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Perfil', style: TextStyle(color: Colors.black)),
@@ -196,7 +159,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           ),
           IconButton(
             icon: const Icon(Icons.apps),
-            onPressed: _navigateToResourcesPage, // Navegar para a página de recursos
+            onPressed: _navigateToResourcesPage,
           ),
         ],
         bottom: TabBar(
@@ -214,16 +177,16 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildProfileTab(bmi, bmiCategory),
-          _buildWeightChart(),
-          _buildSymptomsHistory(),
-          _buildExerciseHistory(),
+          _buildProfileTab(),
+          WeightChart(weightData: weightHistory), // Passa a lista de pesos
+          SymptomsHistory(symptomsHistory: _symptomsHistory, addSymptom: _addSymptom), // Passar o histórico e a função
+          ExerciseHistory(), // Histórico de exercícios
         ],
       ),
     );
   }
 
-  Widget _buildProfileTab(double bmi, String bmiCategory) {
+  Widget _buildProfileTab() {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -241,7 +204,6 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           _buildProfileCard("Peso (kg)", "${weightController.text} kg", Icons.fitness_center),
           _buildProfileCard("Altura (m)", "${heightController.text} m", Icons.height),
           _buildProfileCard("Meta de Passos", stepGoalController.text, Icons.directions_walk),
-          _buildProfileCard("IMC", "${bmi.toStringAsFixed(1)} - $bmiCategory", Icons.health_and_safety),
         ],
       ),
     );
@@ -285,66 +247,20 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     }
   }
 
-  Widget _buildWeightChart() {
-    return Column(
-      children: [
-        const Text("Adicione um Novo Peso"),
-        Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: TextField(
-            controller: newWeightController,
-            decoration: const InputDecoration(labelText: "Peso"),
-            keyboardType: TextInputType.number,
-          ),
-        ),
-        ElevatedButton(
-          onPressed: _updateWeightSpots,
-          child: const Text("Adicionar"),
-        ),
-        Expanded(
-          child: LineChart(
-            LineChartData(
-              lineBarsData: [
-                LineChartBarData(
-                  spots: _weightSpots,
-                  isCurved: true,
-                  dotData: FlDotData(show: true),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
+  void _addSymptom(String symptom) {
+    if (symptom.isNotEmpty) {
+      final timestamp = DateTime.now().toString();
+      _symptomsHistory.add({"symptom": symptom, "timestamp": timestamp});
+      setState(() {});
+    }
   }
 
-  Widget _buildSymptomsHistory() {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: TextField(
-            decoration: const InputDecoration(labelText: "Sintoma"),
-            onSubmitted: _addSymptom,
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            itemCount: _symptomsHistory.length,
-            itemBuilder: (context, index) {
-              final symptom = _symptomsHistory[index];
-              return ListTile(
-                title: Text(symptom['symptom']!),
-                subtitle: Text(symptom['timestamp']!),
-              );
-            },
-          ),
-        ),
-      ],
+  void _navigateToResourcesPage() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ResourcesPage(userWeight: widget.weight),
+      ),
     );
-  }
-
-  Widget _buildExerciseHistory() {
-    return const Center(child: Text("Histórico de Exercício"));
   }
 }

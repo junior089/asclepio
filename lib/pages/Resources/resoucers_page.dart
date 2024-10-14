@@ -3,7 +3,7 @@ import 'water_consumption_page.dart';
 import 'disease_outbreaks_page.dart';
 import 'menstrual_cycle_page.dart'; // Importa a nova página de controle de ciclo menstrual
 import 'cleaning_products_page.dart'; // Importa a nova página sobre produtos de limpeza
-import 'package:asclepio/pages/profile_page.dart';
+import 'package:asclepio/pages/Profile/profile_page.dart';
 
 class ResourcesPage extends StatelessWidget {
   final double userWeight; // Adicione o campo para o peso do usuário
