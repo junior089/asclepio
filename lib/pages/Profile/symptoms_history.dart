@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SymptomsHistory extends StatefulWidget {
-  final List<Map<String, String>> symptomsHistory;
-  final Function(String) addSymptom;
+  final void Function(String, DateTime) addSymptom;
 
   const SymptomsHistory({
     Key? key,
-    required this.symptomsHistory,
-    required this.addSymptom,
+    required this.addSymptom, required List<Map<String, String>> symptomsHistory,
   }) : super(key: key);
 
   @override
@@ -18,13 +17,40 @@ class SymptomsHistory extends StatefulWidget {
 
 class _SymptomsHistoryState extends State<SymptomsHistory> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
+  List<Map<String, String>> symptomsHistory = [];
 
   @override
   void initState() {
     super.initState();
+    _loadSymptomsHistory();
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
+    );
+  }
+
+  Future<void> _loadSymptomsHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final List<String>? savedSymptoms = prefs.getStringList('symptomsHistory');
+
+    if (savedSymptoms != null) {
+      setState(() {
+        symptomsHistory = savedSymptoms.map((symptom) {
+          final parts = symptom.split(',');
+          return {
+            'symptom': parts[0],
+            'timestamp': parts[1],
+          };
+        }).toList();
+      });
+    }
+  }
+
+  Future<void> _saveSymptomsHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+      'symptomsHistory',
+      symptomsHistory.map((symptom) => '${symptom['symptom']},${symptom['timestamp']}').toList(),
     );
   }
 
@@ -62,15 +88,20 @@ class _SymptomsHistoryState extends State<SymptomsHistory> with SingleTickerProv
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: ListView.builder(
-              itemCount: widget.symptomsHistory.length,
+            child: symptomsHistory.isNotEmpty
+                ? ListView.builder(
+              itemCount: symptomsHistory.length,
               itemBuilder: (context, index) {
-                final symptomEntry = widget.symptomsHistory[index];
+                final symptomEntry = symptomsHistory[index];
+                final symptom = symptomEntry['symptom'] ?? 'Sintoma desconhecido';
+                final timestamp = symptomEntry['timestamp'];
+
                 return Dismissible(
                   key: Key(symptomEntry['timestamp']!),
                   onDismissed: (direction) {
                     setState(() {
-                      widget.symptomsHistory.removeAt(index);
+                      symptomsHistory.removeAt(index);
+                      _saveSymptomsHistory();
                       Fluttertoast.showToast(
                         msg: "Sintoma removido",
                         toastLength: Toast.LENGTH_SHORT,
@@ -113,7 +144,6 @@ class _SymptomsHistoryState extends State<SymptomsHistory> with SingleTickerProv
                         trailing: IconButton(
                           icon: const Icon(Icons.info_outline),
                           onPressed: () {
-                            // Implementar ação para exibir mais informações sobre o sintoma.
                             _showSymptomDetails(symptomEntry);
                           },
                         ),
@@ -122,7 +152,8 @@ class _SymptomsHistoryState extends State<SymptomsHistory> with SingleTickerProv
                   ),
                 );
               },
-            ),
+            )
+                : const Center(child: Text("Nenhum sintoma registrado.")),
           ),
         ],
       ),
@@ -146,7 +177,10 @@ class _SymptomsHistoryState extends State<SymptomsHistory> with SingleTickerProv
               onPressed: () {
                 final symptomText = symptomController.text.trim();
                 if (symptomText.isNotEmpty) {
-                  widget.addSymptom(symptomText);
+                  final timestamp = DateTime.now().toIso8601String();
+                  symptomsHistory.add({'symptom': symptomText, 'timestamp': timestamp});
+                  _saveSymptomsHistory(); // Salvar histórico após adicionar
+                  widget.addSymptom(symptomText, DateTime.now());
                   _animationController.forward().then((_) {
                     _animationController.reverse();
                   });

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert'; // Importar para usar jsonEncode e jsonDecode
 
 class WaterConsumptionPage extends StatefulWidget {
   final double weight;
@@ -17,16 +19,33 @@ class _WaterConsumptionPageState extends State<WaterConsumptionPage> {
   double _customAmount = 0;
 
   @override
-
   void initState() {
     super.initState();
     _calculateDailyWaterIntake();
+    _loadWaterConsumptionData();
   }
 
   void _calculateDailyWaterIntake() {
     setState(() {
-      _dailyWaterIntake = widget.weight * 30;
+      _dailyWaterIntake = widget.weight * 35;
     });
+  }
+
+  Future<void> _loadWaterConsumptionData() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _waterConsumed = prefs.getDouble('waterConsumed') ?? 0;
+      _consumptionLog = (prefs.getStringList('consumptionLog') ?? [])
+          .map((entry) => Map<String, dynamic>.from(jsonDecode(entry)))
+          .toList();
+    });
+  }
+
+  Future<void> _saveWaterConsumptionData() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setDouble('waterConsumed', _waterConsumed);
+    prefs.setStringList('consumptionLog',
+        _consumptionLog.map((entry) => jsonEncode(entry)).toList());
   }
 
   void _addWaterConsumption(double amount) {
@@ -34,24 +53,24 @@ class _WaterConsumptionPageState extends State<WaterConsumptionPage> {
       _waterConsumed += amount;
       _consumptionLog.add({
         'amount': amount,
-        'time': DateTime.now(),
+        'time': DateTime.now().toIso8601String(), // Use ISO 8601 para armazenamento
       });
     });
+    _saveWaterConsumptionData();
   }
-
-
 
   void _removeConsumption(int index) {
     setState(() {
       _waterConsumed -= _consumptionLog[index]['amount'];
       _consumptionLog.removeAt(index);
     });
+    _saveWaterConsumptionData();
   }
 
   void _addCustomAmount() {
     if (_customAmount > 0) {
       _addWaterConsumption(_customAmount);
-      _customAmount = 0; // Reset após a adição
+      _customAmount = 0;
     }
   }
 
@@ -131,7 +150,7 @@ class _WaterConsumptionPageState extends State<WaterConsumptionPage> {
                 itemCount: _consumptionLog.length,
                 itemBuilder: (context, index) {
                   return Dismissible(
-                    key: Key(_consumptionLog[index]['time'].toString()),
+                    key: Key(_consumptionLog[index]['time']),
                     background: Container(color: Colors.red),
                     onDismissed: (direction) {
                       _removeConsumption(index);
@@ -196,7 +215,7 @@ class _WaterConsumptionPageState extends State<WaterConsumptionPage> {
     return ListTile(
       leading: Icon(Icons.local_drink, color: Colors.blue[300]),
       title: Text('${_consumptionLog[index]['amount'].toStringAsFixed(1)} ml'),
-      subtitle: Text('Hora: ${_consumptionLog[index]['time'].toLocal().toString().split(' ')[1].split('.')[0]}'),
+      subtitle: Text('Hora: ${DateTime.parse(_consumptionLog[index]['time']).toLocal().toString().split(' ')[1].split('.')[0]}'),
       tileColor: index % 2 == 0 ? Colors.blue[50] : Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
     );

@@ -5,6 +5,7 @@ import 'pages/Profile/profile_page.dart';
 import 'pages/exercise_page.dart';
 import 'pages/Resources/resoucers_page.dart';
 import 'pages/NearbyHospitalsPage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() => runApp(MyApp());
 
@@ -33,16 +34,44 @@ class _MyAppState extends State<MyApp> {
   double userHeight = 1.75;
   int stepGoal = 10000; // Define o valor inicial da meta de passos
 
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  // Função para carregar dados do Shared Preferences
+  Future<void> _loadUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      userName = prefs.getString('userName') ?? "João Silva";
+      userAge = prefs.getInt('userAge') ?? 25;
+      userHeight = prefs.getDouble('userHeight') ?? 1.75;
+      healthData.weight = prefs.getDouble('userWeight') ?? 64.2;
+      stepGoal = prefs.getInt('stepGoal') ?? 10000;
+    });
+  }
+
+  // Função para salvar dados no Shared Preferences
+  Future<void> _saveUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('userName', userName);
+    await prefs.setInt('userAge', userAge);
+    await prefs.setDouble('userHeight', userHeight);
+    await prefs.setDouble('userWeight', healthData.weight);
+    await prefs.setInt('stepGoal', stepGoal);
+  }
+
   // Calcula calorias com base nos passos
   void _calculateCalories() {
-    healthData.activeCalories = healthData.steps * 0.04; // Ajuste conforme desejado
+    healthData.activeCalories = healthData.steps * 0.04;
   }
 
   List<Widget> _pages() {
     return [
       HealthDashboard(
         healthData: healthData,
-        stepGoal: stepGoal, // Passa a meta para o Dashboard
+        stepGoal: stepGoal,
       ),
       const ExercisePage(),
       ResourcesPage(userWeight: healthData.weight),
@@ -58,11 +87,12 @@ class _MyAppState extends State<MyApp> {
             userAge = age;
             healthData.weight = weight;
             userHeight = height;
-            stepGoal = newStepGoal; // Atualiza a meta de passos na ProfilePage
-            _calculateCalories(); // Recalcula calorias ao atualizar o perfil
+            stepGoal = newStepGoal;
+            _calculateCalories();
+            _saveUserData(); // Salva os dados após a atualização do perfil
           });
         },
-        stepGoal: stepGoal, // Passa a meta inicial para a página de perfil
+        stepGoal: stepGoal,
       ),
     ];
   }
@@ -82,7 +112,7 @@ class _MyAppState extends State<MyApp> {
           currentIndex: _currentIndex,
           onTap: _onItemTapped,
           selectedItemColor: Colors.redAccent,
-          unselectedItemColor: Colors.redAccent,
+          unselectedItemColor: Colors.deepOrange,
           showUnselectedLabels: true,
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),

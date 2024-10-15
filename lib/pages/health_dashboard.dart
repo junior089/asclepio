@@ -3,6 +3,7 @@ import 'package:percent_indicator/percent_indicator.dart';
 import '../models/health_data.dart';
 import '../widgets/stat_card.dart';
 import 'package:sensors_plus/sensors_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HealthDashboard extends StatefulWidget {
   final HealthData healthData;
@@ -26,15 +27,15 @@ class _HealthDashboardState extends State<HealthDashboard> {
   double _distance = 0.0; // Distância percorrida
   int _activeMinutes = 0; // Minutos de atividade
 
-  // Adicione essas variáveis para controlar o consumo de água
+  // Variáveis para controlar o consumo de água
   double _dailyWaterIntake = 0;
   double _waterConsumed = 0;
 
   @override
   void initState() {
     super.initState();
-    // Calcular a meta diária de ingestão de água (exemplo: peso * 30)
-    _dailyWaterIntake = widget.healthData.weight * 30; // em ml
+    _dailyWaterIntake = widget.healthData.weight * 35; // em ml
+    _loadData(); // Carregar todos os dados
 
     gyroscopeEvents.listen((GyroscopeEvent event) {
       double yChange = (event.y - _lastY).abs();
@@ -46,6 +47,7 @@ class _HealthDashboardState extends State<HealthDashboard> {
           _activeMinutes = (_steps / 60).toInt();
           _caloriesBurned = calculateCalories();
         });
+        _saveData(); // Salvar os dados ao atualizar passos
       } else if (yChange < 0.5 && _isStepping) {
         _isStepping = false;
       }
@@ -55,6 +57,33 @@ class _HealthDashboardState extends State<HealthDashboard> {
 
   int calculateCalories() {
     return (_steps * 0.045).toInt(); // Estimativa de calorias por passo
+  }
+
+  Future<void> _loadData() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _steps = prefs.getInt('steps') ?? 0;
+      _caloriesBurned = prefs.getInt('caloriesBurned') ?? 0;
+      _distance = prefs.getDouble('distance') ?? 0.0;
+      _activeMinutes = prefs.getInt('activeMinutes') ?? 0;
+      _waterConsumed = prefs.getDouble('waterConsumed') ?? 0;
+    });
+  }
+
+  Future<void> _saveData() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setInt('steps', _steps);
+    prefs.setInt('caloriesBurned', _caloriesBurned);
+    prefs.setDouble('distance', _distance);
+    prefs.setInt('activeMinutes', _activeMinutes);
+    prefs.setDouble('waterConsumed', _waterConsumed);
+  }
+
+  void _addWaterConsumption(double amount) {
+    setState(() {
+      _waterConsumed += amount;
+    });
+    _saveData(); // Salvar ao adicionar consumo de água
   }
 
   @override
