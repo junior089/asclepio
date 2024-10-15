@@ -38,8 +38,9 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
 
   String _selectedAvatar = 'assets/avatars/avatar1.png';
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  List<Map<String, String>> _symptomsHistory = [];
+  final List<Map<String, String>> _symptomsHistory = [];
   List<double> weightHistory = []; // Lista para armazenar o histórico de pesos
+
 
   @override
   void initState() {
@@ -180,7 +181,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           _buildProfileTab(),
           WeightChart(weightData: weightHistory), // Passa a lista de pesos
           SymptomsHistory(symptomsHistory: _symptomsHistory, addSymptom: _addSymptom), // Passar o histórico e a função
-          ExerciseHistory(), // Histórico de exercícios
+          ExerciseHistory(exerciseHistory: [],), // Histórico de exercícios
         ],
       ),
     );

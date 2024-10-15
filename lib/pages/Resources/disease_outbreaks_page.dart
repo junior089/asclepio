@@ -42,7 +42,7 @@ class DiseaseOutbreaksPage extends StatefulWidget {
 class _DiseaseOutbreaksPageState extends State<DiseaseOutbreaksPage> {
   List<DiseaseOutbreak> filteredOutbreaks = [];
   String searchQuery = '';
-  bool isLoading = false;
+  bool isLoading = true;
 
   @override
   void initState() {
@@ -51,10 +51,6 @@ class _DiseaseOutbreaksPageState extends State<DiseaseOutbreaksPage> {
   }
 
   Future<void> _fetchOutbreaks() async {
-    setState(() {
-      isLoading = true;
-    });
-
     // Simulação de uma chamada a uma API
     await Future.delayed(Duration(seconds: 2)); // Simula atraso de rede
 
@@ -81,11 +77,51 @@ class _DiseaseOutbreaksPageState extends State<DiseaseOutbreaksPage> {
         date: DateTime.now().subtract(Duration(days: 10)),
         type: 'COVID-19',
       ),
+      DiseaseOutbreak(
+        title: 'Surto de Sarampo',
+        description: 'Casos de sarampo em aumento.',
+        location: 'Curitiba, PR',
+        date: DateTime.now().subtract(Duration(days: 3)),
+        type: 'Sarampo',
+      ),
+      DiseaseOutbreak(
+        title: 'Epidemia de Gripe Aviária',
+        description: 'Casos de gripe aviária detectados em aves.',
+        location: 'Florianópolis, SC',
+        date: DateTime.now().subtract(Duration(days: 2)),
+        type: 'Gripe Aviária',
+      ),
+      DiseaseOutbreak(
+        title: 'Alerta de Zika',
+        description: 'Aumento de casos de Zika registrados.',
+        location: 'Salvador, BA',
+        date: DateTime.now().subtract(Duration(days: 4)),
+        type: 'Zika',
+      ),
+      DiseaseOutbreak(
+        title: 'Surto de Cólera',
+        description: 'Casos de cólera em áreas de risco.',
+        location: 'Fortaleza, CE',
+        date: DateTime.now().subtract(Duration(days: 6)),
+        type: 'Cólera',
+      ),
     ];
 
     setState(() {
       filteredOutbreaks = outbreaks; // Atualiza a lista filtrada
       isLoading = false;
+    });
+  }
+
+  void _onSearchChanged(String value) {
+    setState(() {
+      searchQuery = value.toLowerCase();
+      filteredOutbreaks = filteredOutbreaks.where((outbreak) {
+        return outbreak.title.toLowerCase().contains(searchQuery) ||
+            outbreak.location.toLowerCase().contains(searchQuery) ||
+            outbreak.description.toLowerCase().contains(searchQuery) ||
+            outbreak.type.toLowerCase().contains(searchQuery);
+      }).toList();
     });
   }
 
@@ -104,17 +140,7 @@ class _DiseaseOutbreaksPageState extends State<DiseaseOutbreaksPage> {
                 border: OutlineInputBorder(),
                 suffixIcon: Icon(Icons.search),
               ),
-              onChanged: (value) {
-                setState(() {
-                  searchQuery = value.toLowerCase();
-                  filteredOutbreaks = filteredOutbreaks.where((outbreak) {
-                    return outbreak.title.toLowerCase().contains(searchQuery) ||
-                        outbreak.location.toLowerCase().contains(searchQuery) ||
-                        outbreak.description.toLowerCase().contains(searchQuery) ||
-                        outbreak.type.toLowerCase().contains(searchQuery);
-                  }).toList();
-                });
-              },
+              onChanged: _onSearchChanged,
             ),
           ),
         ),
@@ -165,7 +191,10 @@ class _DiseaseOutbreaksPageState extends State<DiseaseOutbreaksPage> {
         borderRadius: BorderRadius.circular(10),
       ),
       child: ListTile(
-        title: Text(outbreak.title, style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          outbreak.title,
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -199,6 +228,14 @@ class _DiseaseOutbreaksPageState extends State<DiseaseOutbreaksPage> {
         return Icon(Icons.warning, color: Colors.yellow);
       case 'COVID-19':
         return Icon(Icons.health_and_safety, color: Colors.red);
+      case 'Sarampo':
+        return Icon(Icons.child_care, color: Colors.purple);
+      case 'Gripe Aviária':
+        return Icon(Icons.airline_seat_individual_suite, color: Colors.brown);
+      case 'Zika':
+        return Icon(Icons.bug_report, color: Colors.green);
+      case 'Cólera':
+        return Icon(Icons.local_hospital, color: Colors.teal);
       default:
         return Icon(Icons.info);
     }
@@ -225,9 +262,15 @@ class OutbreakDetailPage extends StatelessWidget {
             SizedBox(height: 8.0),
             Text(outbreak.description),
             SizedBox(height: 16.0),
-            Text('Localização: ${outbreak.location}', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              'Localização: ${outbreak.location}',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             SizedBox(height: 8.0),
-            Text('Data: ${outbreak.date.toLocal().toString().split(' ')[0]}', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              'Data: ${outbreak.date.toLocal().toString().split(' ')[0]}',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ],
         ),
       ),

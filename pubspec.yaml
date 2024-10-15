@@ -24,11 +24,23 @@ dependencies:
   cupertino_icons: ^1.0.8
   shared_preferences: ^2.3.2
   provider: ^6.0.5
+  flutter_native_splash: ^2.4.1
+  google_maps_flutter: ^2.0.0
+  fluttertoast: ^8.0.9
+
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+
+
+flutter_native_splash:
+  color: "#e1ebe2"
+  image: "assets/splashscreen.png"
+  android: true
+  android12: true
+  ios: true
 
 flutter:
   uses-material-design: true

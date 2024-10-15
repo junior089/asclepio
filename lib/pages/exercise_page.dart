@@ -23,6 +23,8 @@ class _ExercisePageState extends State<ExercisePage> {
     {'name': 'Escalada', 'duration': 60, 'icon': Icons.terrain, 'color': Colors.brown[300], 'type': 'Força'},
   ];
 
+  List<Map<String, dynamic>> exerciseHistory = [];
+
   String selectedType = 'Todos';
   final List<String> exerciseTypes = ['Todos', 'Cardio', 'Força', 'Flexibilidade'];
   final TextEditingController searchController = TextEditingController();
@@ -324,6 +326,7 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
           timer.cancel();
           isTimerRunning = false;
           Vibration.vibrate(duration: 500); // Vibra ao final do tempo
+
         }
       });
     });
@@ -333,6 +336,7 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
     setState(() {
       isTimerRunning = false;
       timer?.cancel();
+
     });
   }
 
