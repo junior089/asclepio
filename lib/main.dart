@@ -82,7 +82,7 @@ class _MyAppState extends State<MyApp> {
           currentIndex: _currentIndex,
           onTap: _onItemTapped,
           selectedItemColor: Colors.redAccent,
-          unselectedItemColor: Colors.redAccent,
+          unselectedItemColor: Colors.deepOrange,
           showUnselectedLabels: true,
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),

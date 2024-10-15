@@ -9,25 +9,32 @@ class MenstrualCyclePage extends StatefulWidget {
 }
 
 class _MenstrualCyclePageState extends State<MenstrualCyclePage> {
-  DateTime? _cycleStartDate; // Data de início do ciclo
-  final int _cycleLength = 28; // Duração média do ciclo
-  final List<String> _symptoms = []; // Lista de sintomas
+  DateTime? _cycleStartDate;
+  final int _cycleLength = 28;
+  final List<String> _symptoms = [];
   final TextEditingController _symptomController = TextEditingController();
 
-  // Método para calcular a próxima menstruação
-  DateTime get _nextPeriodDate => (_cycleStartDate ?? DateTime.now()).add(Duration(days: _cycleLength));
+  DateTime get _nextPeriodDate =>
+      (_cycleStartDate ?? DateTime.now()).add(Duration(days: _cycleLength));
 
-  // Método para registrar um sintoma
+  DateTime get _fertileStartDate =>
+      (_cycleStartDate ?? DateTime.now()).add(Duration(days: _cycleLength - 14));
+
+  DateTime get _fertileEndDate =>
+      (_cycleStartDate ?? DateTime.now()).add(Duration(days: _cycleLength - 12));
+
   void _addSymptom() {
     if (_symptomController.text.isNotEmpty) {
       setState(() {
         _symptoms.add(_symptomController.text);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Sintoma adicionado: ${_symptomController.text}')),
+        );
         _symptomController.clear();
       });
     }
   }
 
-  // Método para selecionar a data do início do ciclo
   Future<void> _selectStartDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -36,17 +43,30 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> {
       lastDate: DateTime.now(),
     );
 
-    if (picked != null && picked != _cycleStartDate) {
+    if (picked != null) {
       setState(() {
         _cycleStartDate = picked;
       });
     }
   }
 
+  void _removeSymptom(int index) {
+    setState(() {
+      _symptoms.removeAt(index);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Sintoma removido')),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: Colors.grey[200],
+      appBar: AppBar(
+        title: const Text('Ciclo Menstrual'),
+        backgroundColor: Colors.white10,
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -59,8 +79,6 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> {
             _buildSymptomInput(),
             const SizedBox(height: 20),
             _buildSymptomList(),
-            const Spacer(),
-            _buildBottomNavigation(),
           ],
         ),
       ),
@@ -68,24 +86,29 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> {
   }
 
   Widget _buildDateHeader() {
+    final DateTime today = DateTime.now();
+    final String dayFormat = 'd';
+    final List<String> weekDays = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20),
+      padding: const EdgeInsets.symmetric(vertical: 25),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: List.generate(7, (index) {
+          final DateTime currentDay = today.subtract(Duration(days: today.weekday - 1 - index));
           return Column(
             children: [
               Text(
-                ["S", "T", "Q", "HOJE", "Q", "S", "D"][index],
+                weekDays[index],
                 style: TextStyle(
                   fontWeight: index == 3 ? FontWeight.bold : FontWeight.normal,
                 ),
               ),
               const SizedBox(height: 5),
               Text(
-                (DateTime.now().day + index).toString(),
+                DateFormat(dayFormat).format(currentDay),
                 style: TextStyle(
-                  color: index >= 5 ? Colors.pink : Colors.black,
+                  color: index == 3 ? Colors.pink : Colors.black,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -99,45 +122,66 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> {
   Widget _buildCycleStatus() {
     final daysUntilNextPeriod = _nextPeriodDate.difference(DateTime.now()).inDays;
 
-    return Container(
-      width: 200,
-      height: 200,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
-            spreadRadius: 3,
-            blurRadius: 6,
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text(
-            'Menstruação em',
-            style: TextStyle(fontSize: 16, color: Colors.black54),
-          ),
-          Text(
-            '$daysUntilNextPeriod dias',
-            style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-          ElevatedButton(
-            onPressed: () {
-              _selectStartDate(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.pinkAccent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Container(
+          width: 225,
+          height: 225,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.3),
+                spreadRadius: 3,
+                blurRadius: 6,
               ),
-            ),
-            child: const Text('Definir data do ciclo'),
+            ],
           ),
-        ],
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'Menstruação em',
+                style: TextStyle(fontSize: 16, color: Colors.black54),
+              ),
+              Text(
+                '$daysUntilNextPeriod dias',
+                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: () {
+                  _selectStartDate(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.pinkAccent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+                child: const Text('Definir data do ciclo'),
+              ),
+            ],
+          ),
+        ),
+        _buildCycleProgress(),
+      ],
+    );
+  }
+
+  Widget _buildCycleProgress() {
+    final DateTime today = DateTime.now();
+    final int daysSinceStart = _cycleStartDate != null
+        ? today.difference(_cycleStartDate!).inDays
+        : 0;
+
+    return SizedBox(
+      width: 225,
+      height: 225,
+      child: CustomPaint(
+        painter: CycleProgressPainter(daysSinceStart, _cycleLength, _fertileStartDate, _fertileEndDate),
       ),
     );
   }
@@ -149,14 +193,14 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'conteúdo diário · Hoje',
+            'Conteúdo diário · Hoje',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 10),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildContentCard('Dia do ciclo', '${DateTime.now().day}', Colors.purple[100]!),
+              _buildContentCard('Dia do ciclo', '${_cycleStartDate != null ? DateTime.now().difference(_cycleStartDate!).inDays : 0}', Colors.purple[100]!),
               _buildContentCard('Sintomas', '${_symptoms.length}', Colors.blue[100]!),
             ],
           ),
@@ -216,46 +260,101 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> {
   }
 
   Widget _buildSymptomList() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Sintomas registrados',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-          ..._symptoms.map((symptom) => Padding(
-            padding: const EdgeInsets.only(bottom: 8.0),
-            child: Card(
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: ListView.builder(
+          itemCount: _symptoms.length,
+          itemBuilder: (context, index) {
+            return Card(
               color: Colors.white,
               elevation: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(10.0),
-                child: Text(symptom, style: const TextStyle(fontSize: 16)),
+              child: ListTile(
+                title: Text(_symptoms[index]),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  onPressed: () => _removeSymptom(index),
+                ),
               ),
-            ),
-          )).toList(),
-        ],
+            );
+          },
+        ),
       ),
     );
   }
+}
 
-  Widget _buildBottomNavigation() {
-    return BottomNavigationBar(
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.calendar_today),
-          label: 'Hoje',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.library_books),
-          label: 'Conteúdo',
-        ),
-      ],
-      selectedItemColor: Colors.pinkAccent,
-      unselectedItemColor: Colors.grey,
+class CycleProgressPainter extends CustomPainter {
+  final int daysSinceStart;
+  final int cycleLength;
+  final DateTime fertileStartDate;
+  final DateTime fertileEndDate;
+
+  CycleProgressPainter(this.daysSinceStart, this.cycleLength, this.fertileStartDate, this.fertileEndDate);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double radius = size.width / 2;
+
+    Paint paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 8;
+
+    // Define colors for each phase
+    Color menstruationColor = Colors.red;
+    Color fertileColor = Colors.green;
+    Color otherColor = Colors.blue;
+
+    // Draw the circle for menstruation
+    if (daysSinceStart < 5) {
+      paint.color = menstruationColor;
+      canvas.drawArc(Offset.zero & size, -90 * (3.14 / 180), (daysSinceStart / 5) * (3.14 * 2), false, paint);
+    }
+
+    // Draw the circle for fertile phase
+    if (daysSinceStart >= 5 && daysSinceStart < cycleLength) {
+      paint.color = fertileColor;
+      canvas.drawArc(Offset.zero & size, -90 * (3.14 / 180), (daysSinceStart - 5) / 12 * (3.14 * 2), false, paint);
+    }
+
+    // Draw the remaining cycle
+    if (daysSinceStart >= cycleLength) {
+      paint.color = otherColor;
+      canvas.drawArc(Offset.zero & size, -90 * (3.14 / 180), (cycleLength) * (3.14 * 2), false, paint);
+    }
+
+    // Draw outer progress bar
+    Paint outerPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 8
+      ..color = Colors.grey[300]!;
+
+    canvas.drawCircle(Offset(radius, radius), radius - 4, outerPaint);
+
+    // Draw segments for each phase
+    drawSegment(canvas, size, -90, 5, menstruationColor);
+    drawSegment(canvas, size, 5, 12, fertileColor);
+    drawSegment(canvas, size, 17, cycleLength - 17, otherColor);
+  }
+
+  void drawSegment(Canvas canvas, Size size, double startDegree, double extent, Color color) {
+    final double radius = size.width / 2;
+    final Paint paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 10;
+
+    canvas.drawArc(
+      Offset.zero & size,
+      startDegree * (3.14 / 180),
+      extent * (3.14 / 180),
+      false,
+      paint,
     );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return true;
   }
 }
