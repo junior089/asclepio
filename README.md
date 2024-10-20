@@ -45,3 +45,46 @@ To get started with Asclépio:
 1. Clone the repository:
    ```bash
    git clone https://github.com/username/asclepio.git
+
+2. Navigate to the directory:
+
+cd asclepio
+
+
+3. Install dependencies:
+
+flutter pub get
+
+
+4. Run the app:
+
+flutter run
+
+
+
+
+---
+
+🤝 Contributing
+
+We welcome contributions from the community! Feel free to submit a pull request or open an issue to improve the platform.
+
+
+---
+
+💬 Contact Us
+
+For any inquiries or support:
+
+Email: support@asclepio.com
+
+Twitter: @AsclepioApp
+
+
+
+---
+
+
+
+
+
