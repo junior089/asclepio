@@ -1,16 +1,47 @@
-# asclepio
+# 🏥 Asclépio - Your Health Companion
 
-app saude feira de ciencias
+![Asclépio](https://img.shields.io/badge/Health-Your%20wellbeing%20matters-brightgreen?style=for-the-badge&logo=heartbeat)
 
-## Getting Started
+Welcome to **Asclépio**, your personalized health management system, where you can track your well-being, monitor symptoms, and maintain a healthy lifestyle.
 
-This project is a starting point for a Flutter application.
+## 🚀 Features
 
-A few resources to get you started if this is your first Flutter project:
+- 💧 **Track your Water Intake**: Stay hydrated with our smart tracking tools.
+- 📊 **Weight Monitoring**: Follow your weight progress with integrated BMI analysis.
+- 🧭 **Exercise Tracking**: Track your activities (walking, running, cycling) with route maps and progress tracking.
+- 🩺 **Symptom History**: Record and analyze your symptoms over time.
+- 🦠 **Disease Outbreak Alerts**: Get notified about disease outbreaks in your region.
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+---
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## 🌐 Live Demo
+
+[Visit Asclépio Website](#) 
+
+---
+
+## 🛠️ Tech Stack
+
+- **Frontend**: Flutter
+- **Backend**: Firebase
+- **Mobile**: Android Studio
+- **Tools**: Shared Preferences, GPS Integration
+
+---
+
+## 📱 Screenshots
+
+Here are some key screens of the app:
+
+![Water Consumption Page](https://via.placeholder.com/300x600)
+![Weight Tracking](https://via.placeholder.com/300x600)
+
+---
+
+## 🔧 Setup and Installation
+
+To get started with Asclépio:
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/username/asclepio.git
