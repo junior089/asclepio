@@ -33,8 +33,8 @@ Welcome to **Asclépio**, your personalized health management system, where you 
 
 Here are some key screens of the app:
 
-![Water Consumption Page](https://drive.google.com/file/d/1k7HbatDFAlAlivqQfvhsZ3HIlgY7Qn1d/view?usp=drivesdk)
-![Weight Tracking](https://drive.google.com/file/d/1k6TgwT2LOB0-8ef2gzMzpDXFmfW9bIfI/view?usp=drivesdk)
+![Home page](https://drive.google.com/file/d/1k7HbatDFAlAlivqQfvhsZ3HIlgY7Qn1d/view?usp=drivesdk)
+![Profile page](https://drive.google.com/file/d/1k6TgwT2LOB0-8ef2gzMzpDXFmfW9bIfI/view?usp=drivesdk)
 
 ---
 
