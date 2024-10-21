@@ -39,8 +39,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   String _selectedAvatar = 'assets/avatars/avatar1.png';
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final List<Map<String, String>> _symptomsHistory = [];
-  List<double> weightHistory = []; // Lista para armazenar o histórico de pesos
-
+  List<double> weightHistory = []; 
 
   @override
   void initState() {
