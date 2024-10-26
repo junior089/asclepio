@@ -16,8 +16,7 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> with SingleTick
   final TextEditingController _symptomController = TextEditingController();
   late AnimationController _controller;
   late Animation<double> _animation;
-// Controlador para o campo de entrada da duração do ciclo
-  TextEditingController _cycleLengthController = TextEditingController();
+  final TextEditingController _cycleLengthController = TextEditingController();
   int _cycleLength = 28; // Duração padrão do ciclo (28 dias)
 
 
@@ -50,7 +49,7 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> with SingleTick
   }
 
   bool _isValidCycleLength() {
-     int? length = int.tryParse(_cycleLengthController.text);
+    int? length = int.tryParse(_cycleLengthController.text);
     return length != null && length > 0;
   }
 

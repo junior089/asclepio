@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'models/health_data.dart';
 import 'pages/health_dashboard.dart';
 import 'pages/Profile/profile_page.dart';
 import 'pages/exercise_page.dart';
 import 'pages/Resources/resoucers_page.dart';
 import 'pages/NearbyHospitalsPage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:asclepio/models/health_data.dart';
 
 void main() => runApp(MyApp());
 

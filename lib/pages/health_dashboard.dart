@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:percent_indicator/percent_indicator.dart';
-import '../models/health_data.dart';
 import '../widgets/stat_card.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:asclepio/models/health_data.dart';
 
 class HealthDashboard extends StatefulWidget {
   final HealthData healthData;
@@ -24,18 +24,21 @@ class _HealthDashboardState extends State<HealthDashboard> {
   double _lastY = 0.0;
   bool _isStepping = false;
   int _caloriesBurned = 0;
-  double _distance = 0.0; // Distância percorrida
-  int _activeMinutes = 0; // Minutos de atividade
-
-  // Variáveis para controlar o consumo de água
+  double _distance = 0.0;
+  int _activeMinutes = 0;
   double _dailyWaterIntake = 0;
   double _waterConsumed = 0;
+  double _bloodOxygenLevel = 98.0;
+
+  // Novas variáveis para pressão arterial e temperatura corporal
+  String _bloodPressure = '120/80'; // valor padrão
+  double _bodyTemperature = 36.5; // valor padrão
 
   @override
   void initState() {
     super.initState();
     _dailyWaterIntake = widget.healthData.weight * 35; // em ml
-    _loadData(); // Carregar todos os dados
+    _loadData();
 
     gyroscopeEvents.listen((GyroscopeEvent event) {
       double yChange = (event.y - _lastY).abs();
@@ -43,11 +46,11 @@ class _HealthDashboardState extends State<HealthDashboard> {
         setState(() {
           _steps++;
           _isStepping = true;
-          _distance = _steps * 0.00075; // Convertendo passos para km
+          _distance = _steps * 0.00075;
           _activeMinutes = (_steps / 60).toInt();
           _caloriesBurned = calculateCalories();
         });
-        _saveData(); // Salvar os dados ao atualizar passos
+        _saveData();
       } else if (yChange < 0.5 && _isStepping) {
         _isStepping = false;
       }
@@ -56,7 +59,7 @@ class _HealthDashboardState extends State<HealthDashboard> {
   }
 
   int calculateCalories() {
-    return (_steps * 0.045).toInt(); // Estimativa de calorias por passo
+    return (_steps * 0.045).toInt();
   }
 
   Future<void> _loadData() async {
@@ -67,6 +70,9 @@ class _HealthDashboardState extends State<HealthDashboard> {
       _distance = prefs.getDouble('distance') ?? 0.0;
       _activeMinutes = prefs.getInt('activeMinutes') ?? 0;
       _waterConsumed = prefs.getDouble('waterConsumed') ?? 0;
+      _bloodOxygenLevel = prefs.getDouble('bloodOxygenLevel') ?? 96.0;
+      _bloodPressure = prefs.getString('bloodPressure') ?? '120/80';
+      _bodyTemperature = prefs.getDouble('bodyTemperature') ?? 36.5;
     });
   }
 
@@ -77,13 +83,16 @@ class _HealthDashboardState extends State<HealthDashboard> {
     prefs.setDouble('distance', _distance);
     prefs.setInt('activeMinutes', _activeMinutes);
     prefs.setDouble('waterConsumed', _waterConsumed);
+    prefs.setDouble('bloodOxygenLevel', _bloodOxygenLevel);
+    prefs.setString('bloodPressure', _bloodPressure);
+    prefs.setDouble('bodyTemperature', _bodyTemperature);
   }
 
   void _addWaterConsumption(double amount) {
     setState(() {
       _waterConsumed += amount;
     });
-    _saveData(); // Salvar ao adicionar consumo de água
+    _saveData();
   }
 
   @override
@@ -162,6 +171,24 @@ class _HealthDashboardState extends State<HealthDashboard> {
                 icon: Icons.local_drink,
                 color: Colors.blueAccent,
               ),
+              StatCard(
+                title: 'Oxygen Level',
+                value: '${_bloodOxygenLevel.toStringAsFixed(1)} %',
+                icon: Icons.air,
+                color: Colors.orange,
+              ),
+              StatCard(
+                title: 'Blood Pressure',
+                value: _bloodPressure,
+                icon: Icons.monitor_heart,
+                color: Colors.purple,
+              ),
+              StatCard(
+                title: 'BD Temperature',
+                value: '${_bodyTemperature.toStringAsFixed(1)} °C',
+                icon: Icons.thermostat,
+                color: Colors.teal,
+              ),
             ],
           ),
         ],
@@ -169,3 +196,4 @@ class _HealthDashboardState extends State<HealthDashboard> {
     );
   }
 }
+
