@@ -1,16 +1,9 @@
-import 'dart:io';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:asclepio/pages/Profile/avatar_selection_page.dart';
 import 'package:flutter/material.dart';
-import 'package:pdf/pdf.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../resources/resoucers_page.dart';
 import 'weight_chart.dart';
 import 'symptoms_history.dart';
 import 'exercise_history.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:path_provider/path_provider.dart';
-import 'package:open_file/open_file.dart';
 
 class ProfilePage extends StatefulWidget {
   final String userName;
@@ -30,7 +23,6 @@ class ProfilePage extends StatefulWidget {
     required this.onProfileUpdated,
   }) : super(key: key);
 
-
   @override
   _ProfilePageState createState() => _ProfilePageState();
 }
@@ -43,149 +35,23 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   late TextEditingController heightController;
   late TextEditingController stepGoalController;
   late TextEditingController newWeightController;
-  late TextEditingController bloodTypeController;
 
-
-  String _selectedAvatar = 'assets/avatars/avatar2.png';
+  String _selectedAvatar = 'assets/avatars/avatar1.png';
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final List<Map<String, String>> _symptomsHistory = [];
   List<double> weightHistory = []; // Lista para armazenar o histórico de pesos
+
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
-    nameController = TextEditingController();
-    ageController = TextEditingController();
-    weightController = TextEditingController();
-    heightController = TextEditingController();
-    stepGoalController = TextEditingController();
+    nameController = TextEditingController(text: widget.userName);
+    ageController = TextEditingController(text: widget.userAge.toString());
+    weightController = TextEditingController(text: widget.weight.toString());
+    heightController = TextEditingController(text: widget.height.toString());
+    stepGoalController = TextEditingController(text: widget.stepGoal.toString());
     newWeightController = TextEditingController();
-    bloodTypeController = TextEditingController();
-    _loadProfileData(); // Carrega os dados ao iniciar a página
-  }
-
-  Future<void> _loadProfileData() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      nameController.text = prefs.getString('userName') ?? widget.userName;
-      ageController.text = (prefs.getInt('userAge') ?? widget.userAge).toString();
-      weightController.text = (prefs.getDouble('weight') ?? widget.weight).toString();
-      heightController.text = (prefs.getDouble('height') ?? widget.height).toString();
-      stepGoalController.text = (prefs.getInt('stepGoal') ?? widget.stepGoal).toString();
-      bloodTypeController.text = prefs.getString('bloodType') ?? "O+";
-    });
-  }
-
-  double _calculateBMI() {
-    double weight = double.tryParse(weightController.text) ?? widget.weight;
-    double height = double.tryParse(heightController.text) ?? widget.height;
-    return height > 0 ? weight / (height * height) : 0.0;
-  }
-
-
-  Future<void> _generateUserProfilePdf() async {
-    try {
-      // Solicitar permissão de armazenamento
-      var status = await Permission.videos.request();
-      if (!status.isGranted) {
-        _showSnackBar("Permissão de armazenamento negada.");
-        return;
-      }
-
-      final pdf = pw.Document();
-
-      pdf.addPage(
-        pw.Page(
-          build: (pw.Context context) => pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              // Título do prontuário
-              pw.Center(
-                child: pw.Text(
-                  "Prontuário do Usuário",
-                  style: pw.TextStyle(
-                    fontSize: 30,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColor.fromHex("#2C3E50"), // Cor mais escura para o título
-                  ),
-                ),
-              ),
-              pw.SizedBox(height: 10),
-              pw.Divider(thickness: 3, color: PdfColor.fromHex("#EAEDED")), // Divider mais grosso e com cor suave
-              pw.SizedBox(height: 20),
-
-              // Seção de informações pessoais
-              pw.Text(
-                "Informações Pessoais",
-                style: pw.TextStyle(
-                  fontSize: 24,
-                  fontWeight: pw.FontWeight.bold,
-                  color: PdfColor.fromHex("#2980B9"), // Azul para destacar
-                ),
-              ),
-              pw.SizedBox(height: 15),
-              _buildUserInfoRow("Nome", nameController.text),
-              _buildUserInfoRow("Idade", "${ageController.text} anos"),
-              _buildUserInfoRow("Peso", "${weightController.text} kg"),
-              _buildUserInfoRow("Altura", "${heightController.text} m"),
-              _buildUserInfoRow("IMC", _calculateBMI().toStringAsFixed(2)),
-              _buildUserInfoRow("Tipo Sanguíneo", bloodTypeController.text),
-              pw.SizedBox(height: 15),
-              pw.Divider(thickness: 2, color: PdfColor.fromHex("#EAEDED")),
-              pw.SizedBox(height: 15),
-
-              // Seção de dados de atividade
-              pw.Text(
-                "Dados de Atividade",
-                style: pw.TextStyle(
-                  fontSize: 24,
-                  fontWeight: pw.FontWeight.bold,
-                  color: PdfColor.fromHex("#2980B9"),
-                ),
-              ),
-              pw.SizedBox(height: 15),
-              _buildUserInfoRow("Meta de Passos", "${stepGoalController.text} passos"),
-              pw.SizedBox(height: 30), // Espaço no final
-
-            ],
-          ),
-        ),
-      );
-
-      final directory = await getApplicationDocumentsDirectory(); // Mantenha essa linha
-      final filePath = "${directory?.path}/prontuario_usuario.pdf";
-
-      final file = File(filePath);
-      await file.writeAsBytes(await pdf.save());
-
-      _showSnackBar("PDF gerado com sucesso: $filePath");
-
-      // Abrir o PDF automaticamente
-      await OpenFile.open(filePath);
-    } catch (e) {
-      _showSnackBar("Erro ao gerar PDF: $e. Por favor, tente novamente.");
-    }
-  }
-
-  pw.Widget _buildUserInfoRow(String label, String value) {
-    return pw.Row(
-      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-      children: [
-        pw.Text(label, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-        pw.Text(value),
-      ],
-    );
-  }
-
-  Future<void> _saveProfileData() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('userName', nameController.text);
-    await prefs.setInt('userAge', int.tryParse(ageController.text) ?? widget.userAge);
-    await prefs.setDouble('weight', double.tryParse(weightController.text) ?? widget.weight);
-    await prefs.setDouble('height', double.tryParse(heightController.text) ?? widget.height);
-    await prefs.setInt('stepGoal', int.tryParse(stepGoalController.text) ?? widget.stepGoal);
-    await prefs.setString('bloodType', bloodTypeController.text);
   }
 
   @override
@@ -197,7 +63,6 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     heightController.dispose();
     stepGoalController.dispose();
     newWeightController.dispose();
-    bloodTypeController.dispose();
     super.dispose();
   }
 
@@ -257,7 +122,6 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         break;
     }
 
-    _saveProfileData(); // Salva os dados após qualquer atualização
     widget.onProfileUpdated(
       nameController.text,
       int.tryParse(ageController.text) ?? widget.userAge,
@@ -295,10 +159,6 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
             onPressed: () => _updateProfileData("Nome", nameController.text),
           ),
           IconButton(
-            icon: const Icon(Icons.picture_as_pdf), // Botão para gerar PDF
-            onPressed: _generateUserProfilePdf,
-          ),
-          IconButton(
             icon: const Icon(Icons.apps),
             onPressed: _navigateToResourcesPage,
           ),
@@ -321,7 +181,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           _buildProfileTab(),
           WeightChart(weightData: weightHistory), // Passa a lista de pesos
           SymptomsHistory(symptomsHistory: _symptomsHistory, addSymptom: _addSymptom), // Passar o histórico e a função
-          ExerciseHistory(exerciseHistory: [],),
+          ExerciseHistory(exerciseHistory: [],), // Histórico de exercícios
         ],
       ),
     );
@@ -330,8 +190,7 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   Widget _buildProfileTab() {
     return Padding(
       padding: const EdgeInsets.all(16.0),
-    child: SingleChildScrollView(
-    child: Column(
+      child: Column(
         children: [
           GestureDetector(
             onTap: _navigateToAvatarSelection,
@@ -345,12 +204,9 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
           _buildProfileCard("Idade", "${ageController.text} anos", Icons.calendar_today),
           _buildProfileCard("Peso (kg)", "${weightController.text} kg", Icons.fitness_center),
           _buildProfileCard("Altura (m)", "${heightController.text} m", Icons.height),
-          _buildProfileCard("IMC", _calculateBMI().toStringAsFixed(2), Icons.assessment),
-          _buildProfileCard("Tipo Sanguíneo", bloodTypeController.text, Icons.bloodtype),
           _buildProfileCard("Meta de Passos", stepGoalController.text, Icons.directions_walk),
         ],
       ),
-    )
     );
   }
 
@@ -392,16 +248,20 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     }
   }
 
+  void _addSymptom(String symptom) {
+    if (symptom.isNotEmpty) {
+      final timestamp = DateTime.now().toString();
+      _symptomsHistory.add({"symptom": symptom, "timestamp": timestamp});
+      setState(() {});
+    }
+  }
+
   void _navigateToResourcesPage() {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ResourcesPage(userWeight: double.tryParse(weightController.text) ?? 0),
+        builder: (context) => ResourcesPage(userWeight: widget.weight),
       ),
     );
-  }
-
-  void _addSymptom(String symptom, DateTime date) {
-    setState(() => _symptomsHistory.add({"symptom": symptom, "date": date.toString()}));
   }
 }
