@@ -4,6 +4,10 @@ import '../widgets/stat_card.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:asclepio/models/health_data.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:googleapis/fitness/v1.dart' as fitness;
+import 'package:http/http.dart' as http;
 
 class HealthDashboard extends StatefulWidget {
   final HealthData healthData;
@@ -34,29 +38,61 @@ class _HealthDashboardState extends State<HealthDashboard> {
   String _bloodPressure = '120/80'; // valor padrão
   double _bodyTemperature = 36.5; // valor padrão
 
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: [fitness.FitnessApi.fitnessActivityReadScope],
+  );
+
   @override
   void initState() {
     super.initState();
+    _requestPermissions(); // Solicitar permissões
     _dailyWaterIntake = widget.healthData.weight * 35; // em ml
     _loadData();
+  }
 
-    gyroscopeEvents.listen((GyroscopeEvent event) {
-      double yChange = (event.y - _lastY).abs();
-      if (yChange > 1.0 && !_isStepping) {
-        setState(() {
-          _steps++;
-          _isStepping = true;
-          _distance = _steps * 0.00075;
-          _activeMinutes = (_steps / 60).toInt();
-          _caloriesBurned = calculateCalories();
-        });
-        _saveData();
-      } else if (yChange < 0.5 && _isStepping) {
-        _isStepping = false;
+  Future<void> _requestPermissions() async {
+    await Permission.activityRecognition.request();
+    await Permission.sensors.request();
+  }
+
+  Future<void> _initializeGoogleFitData() async {
+    final account = await _googleSignIn.signIn();
+    if (account == null) {
+      // O usuário não fez login
+      return;
+    }
+
+    final authHeaders = await account.authHeaders;
+    final httpClient = GoogleHttpClient(authHeaders);
+    final fitnessApi = fitness.FitnessApi(httpClient);
+
+    final now = DateTime.now();
+    final startTimeMillis = DateTime(now.year, now.month, now.day).millisecondsSinceEpoch.toString();
+    final endTimeMillis = now.millisecondsSinceEpoch.toString();
+
+    // Utilize datasets.get em vez de aggregate
+    final stepsDataSource = await fitnessApi.users.dataSources.datasets.get(
+      "me",
+      "com.google.step_count.delta", // ID da fonte de dados
+      "$startTimeMillis-$endTimeMillis", // Intervalo de tempo
+    );
+
+    int steps = 0;
+    if (stepsDataSource.point != null) {
+      for (var point in stepsDataSource.point!) {
+        // Convertendo num para int
+        steps += (point.value?.first.intVal ?? 0).toInt();
       }
-      _lastY = event.y;
+    }
+
+    setState(() {
+      _steps = steps;
+      _distance = _steps * 0.00075; // Exemplo: 0,75 metros por passo
+      _activeMinutes = (_steps / 60).toInt();
+      _caloriesBurned = calculateCalories();
     });
   }
+
 
   int calculateCalories() {
     return (_steps * 0.045).toInt();
@@ -107,11 +143,11 @@ class _HealthDashboardState extends State<HealthDashboard> {
         elevation: 0,
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(9.0),
         children: [
           CircularPercentIndicator(
             radius: 100.0,
-            lineWidth: 15.0,
+            lineWidth: 12.0,
             percent: progress > 1.0 ? 1.0 : progress,
             animation: true,
             animationDuration: 1200,
@@ -132,8 +168,8 @@ class _HealthDashboardState extends State<HealthDashboard> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             crossAxisCount: 2,
-            crossAxisSpacing: 16.0,
-            mainAxisSpacing: 16.0,
+            crossAxisSpacing: 12.0,
+            mainAxisSpacing: 12.0,
             children: [
               StatCard(
                 title: 'Calories',
@@ -184,7 +220,7 @@ class _HealthDashboardState extends State<HealthDashboard> {
                 color: Colors.purple,
               ),
               StatCard(
-                title: 'BD Temperature',
+                title: 'B Temperature',
                 value: '${_bodyTemperature.toStringAsFixed(1)} °C',
                 icon: Icons.thermostat,
                 color: Colors.teal,
@@ -195,5 +231,22 @@ class _HealthDashboardState extends State<HealthDashboard> {
       ),
     );
   }
+
+  @override
+  void dispose() {
+    _saveData();
+    super.dispose();
+  }
 }
 
+// Implementação do cliente HTTP do Google
+class GoogleHttpClient extends http.BaseClient {
+  final Map<String, String> _headers;
+
+  GoogleHttpClient(this._headers);
+
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    request.headers.addAll(_headers);
+    return request.send();
+  }
+}

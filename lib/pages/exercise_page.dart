@@ -155,113 +155,68 @@ class _ExercisePageState extends State<ExercisePage> {
   }
 
   void _showAddExerciseDialog() {
+    final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Adicionar Exercício'),
+          title: Row(
+            children: [
+              Icon(Icons.add_circle_outline, color: Theme.of(context).primaryColor),
+              const SizedBox(width: 10),
+              const Text('Adicionar Exercício'),
+            ],
+          ),
           content: SingleChildScrollView(
-            child: Column(
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Nome do Exercício'),
-                ),
-                TextField(
-                  controller: durationController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Duração (min)'),
-                ),
-                DropdownButton<IconData>(
-                  value: selectedIcon,
-                  items: [
-                    Icons.directions_walk,
-                    Icons.run_circle,
-                    Icons.directions_bike,
-                    Icons.self_improvement,
-                    Icons.fitness_center,
-                    Icons.pool,
-                    Icons.straighten,
-                    Icons.flash_on,
-                    Icons.spa,
-                    Icons.terrain,
-                  ].map((icon) {
-                    return DropdownMenuItem(
-                      value: icon,
-                      child: Row(
-                        children: [
-                          Icon(icon),
-                          const SizedBox(width: 8),
-                          Text(icon.toString().split('.').last),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedIcon = value!;
-                    });
-                  },
-                ),
-                const SizedBox(height: 10),
-                DropdownButton<Color>(
-                  value: selectedColor,
-                  items: [
-                    Colors.blue[300],
-                    Colors.orange[300],
-                    Colors.green[300],
-                    Colors.purple[300],
-                    Colors.red[300],
-                    Colors.teal[300],
-                    Colors.pink[300],
-                    Colors.yellow[300],
-                    Colors.cyan[300],
-                    Colors.brown[300],
-                  ].map((color) {
-                    return DropdownMenuItem(
-                      value: color,
-                      child: Container(
-                        height: 20,
-                        width: 20,
-                        color: color,
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedColor = value!;
-                    });
-                  },
-                ),
-                DropdownButton<String>(
-                  value: selectedCategory,
-                  items: exerciseTypes.map((type) {
-                    return DropdownMenuItem(
-                      value: type,
-                      child: Text(type),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedCategory = value!;
-                    });
-                  },
-                ),
-              ],
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildTextField(
+                    controller: nameController,
+                    label: 'Nome do Exercício',
+                    validator: (value) => value!.isEmpty ? 'Por favor, insira um nome.' : null,
+                  ),
+                  const SizedBox(height: 10),
+                  _buildTextField(
+                    controller: durationController,
+                    label: 'Duração (min)',
+                    keyboardType: TextInputType.number,
+                    validator: (value) {
+                      if (value!.isEmpty) return 'Por favor, insira a duração.';
+                      if (int.tryParse(value) == null) return 'Por favor, insira um número válido.';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  _buildIconDropdown(),
+                  const SizedBox(height: 10),
+                  _buildColorDropdown(),
+                  const SizedBox(height: 10),
+                  _buildCategoryDropdown(),
+                ],
+              ),
             ),
           ),
           actions: [
             TextButton(
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
               child: const Text('Cancelar'),
               onPressed: () {
                 Navigator.of(context).pop();
               },
             ),
             TextButton(
+              style: TextButton.styleFrom(foregroundColor: Theme.of(context).primaryColor),
               child: const Text('Adicionar'),
               onPressed: () {
-                _addExercise();
-                Navigator.of(context).pop();
+                if (_formKey.currentState!.validate()) {
+                  _addExercise();
+                  Navigator.of(context).pop();
+                  _showSuccessSnackBar(context);
+                }
               },
             ),
           ],
@@ -269,6 +224,134 @@ class _ExercisePageState extends State<ExercisePage> {
       },
     );
   }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: keyboardType,
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(),
+          contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+          filled: true,
+          fillColor: Colors.grey[200],
+        ),
+        validator: validator,
+      ),
+    );
+  }
+
+  Widget _buildIconDropdown() {
+    return DropdownButtonFormField<IconData>(
+      value: selectedIcon,
+      decoration: InputDecoration(
+        labelText: 'Ícone do Exercício',
+        border: OutlineInputBorder(),
+        filled: true,
+        fillColor: Colors.grey[200],
+      ),
+      items: [
+        Icons.directions_walk,
+        Icons.run_circle,
+        Icons.directions_bike,
+        Icons.self_improvement,
+        Icons.fitness_center,
+        Icons.pool,
+        Icons.straighten,
+        Icons.flash_on,
+        Icons.spa,
+        Icons.terrain,
+      ].map((icon) {
+        return DropdownMenuItem(
+          value: icon,
+          child: Row(
+            children: [
+              Icon(icon),
+              const SizedBox(width: 8),
+              Text(icon.toString().split('.').last),
+            ],
+          ),
+        );
+      }).toList(),
+      onChanged: (value) {
+        setState(() {
+          selectedIcon = value!;
+        });
+      },
+      validator: (value) => value == null ? 'Por favor, escolha um ícone.' : null,
+    );
+  }
+
+  Widget _buildColorDropdown() {
+    return DropdownButtonFormField<Color>(
+      value: selectedColor,
+      decoration: InputDecoration(
+        labelText: 'Cor do Exercício',
+        border: OutlineInputBorder(),
+        filled: true,
+        fillColor: Colors.grey[200],
+      ),
+      items: [
+        Colors.blue[300],
+        Colors.orange[300],
+        Colors.green[300],
+        Colors.purple[300],
+        Colors.red[300],
+        Colors.teal[300],
+        Colors.pink[300],
+        Colors.yellow[300],
+        Colors.cyan[300],
+        Colors.brown[300],
+      ].map((color) {
+        return DropdownMenuItem(
+          value: color,
+          child: Container(
+            height: 20,
+            width: 20,
+            color: color,
+          ),
+        );
+      }).toList(),
+      onChanged: (value) {
+        setState(() {
+          selectedColor = value!;
+        });
+      },
+      validator: (value) => value == null ? 'Por favor, escolha uma cor.' : null,
+    );
+  }
+
+  Widget _buildCategoryDropdown() {
+    return DropdownButtonFormField<String>(
+      value: selectedCategory,
+      decoration: InputDecoration(
+        labelText: 'Categoria do Exercício',
+        border: OutlineInputBorder(),
+        filled: true,
+        fillColor: Colors.grey[200],
+      ),
+      items: exerciseTypes.map((type) {
+        return DropdownMenuItem(
+          value: type,
+          child: Text(type),
+        );
+      }).toList(),
+      onChanged: (value) {
+        setState(() {
+          selectedCategory = value!;
+        });
+      },
+      validator: (value) => value == null ? 'Por favor, escolha uma categoria.' : null,
+    );
+  }
+
 
   void _addExercise() {
     final String name = nameController.text;
@@ -290,6 +373,11 @@ class _ExercisePageState extends State<ExercisePage> {
       nameController.clear();
       durationController.clear();
     }
+  }
+
+  void _showSuccessSnackBar(BuildContext context) {
+    final snackBar = SnackBar(content: const Text('Exercício adicionado com sucesso!'));
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
 }
 

@@ -19,9 +19,56 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> with SingleTick
   final TextEditingController _cycleLengthController = TextEditingController();
   int _cycleLength = 28; // Duração padrão do ciclo (28 dias)
 
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+    _initializeAnimation();
+  }
 
+  void _initializeAnimation() {
+    _controller = AnimationController(
+      duration: const Duration(seconds: 1),
+      vsync: this,
+    )..repeat(reverse: true);
+    _animation = Tween<double>(begin: 1.0, end: 1.1).animate(_controller);
+  }
 
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
+  Future<void> _loadData() async {
+    final prefs = await SharedPreferences.getInstance();
+    _cycleStartDate = DateTime.tryParse(prefs.getString('cycleStartDate') ?? '');
+    _symptoms.addAll(prefs.getStringList('symptoms') ?? []);
+    _cycleLength = prefs.getInt('cycleLength') ?? 28;
+    _cycleLengthController.text = _cycleLength.toString();
+    setState(() {});
+  }
+
+  Future<void> _saveData() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_cycleStartDate != null) {
+      prefs.setString('cycleStartDate', _cycleStartDate!.toIso8601String());
+    }
+    prefs.setStringList('symptoms', _symptoms);
+    prefs.setInt('cycleLength', _cycleLength);
+  }
+
+  void _updateCycleLength(String value) {
+    final int? newLength = int.tryParse(value);
+    if (newLength != null && newLength > 0) {
+      setState(() {
+        _cycleLength = newLength;
+        _saveData();
+      });
+    }
+  }
+
+  bool _isValidCycleLength() => _cycleLength > 0;
 
   Widget _buildCycleLengthInput() {
     return TextField(
@@ -34,23 +81,8 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> with SingleTick
             ? 'Por favor, insira um número válido.'
             : null,
       ),
-      onChanged: _updateCycleLength, // Atualiza a duração do ciclo conforme o usuário digita
+      onChanged: _updateCycleLength,
     );
-  }
-
-  void _updateCycleLength(String value) {
-    final int? newLength = int.tryParse(value); // Tenta converter a entrada para um inteiro
-    if (newLength != null && newLength > 0) {
-      setState(() {
-        _cycleLength = newLength; // Atualiza a duração do ciclo
-        _saveData(); // Salva a nova duração
-      });
-    }
-  }
-
-  bool _isValidCycleLength() {
-    int? length = int.tryParse(_cycleLengthController.text);
-    return length != null && length > 0;
   }
 
   Widget _buildCycleLengthFeedback() {
@@ -60,72 +92,14 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> with SingleTick
     );
   }
 
-
-  @override
-  void initState() {
-    super.initState();
-    _loadData();
-
-    _controller = AnimationController(
-      duration: const Duration(seconds: 1),
-      vsync: this,
-    )..repeat(reverse: true);
-
-    _animation = Tween<double>(begin: 1.0, end: 1.1).animate(_controller);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? cycleDateString = prefs.getString('cycleStartDate');
-    if (cycleDateString != null) {
-      _cycleStartDate = DateTime.parse(cycleDateString);
-    }
-    final List<String>? savedSymptoms = prefs.getStringList('symptoms');
-    if (savedSymptoms != null) {
-      setState(() {
-        _symptoms.addAll(savedSymptoms);
-      });
-    }
-    // Carregar a duração do ciclo se existir
-    final int? savedCycleLength = prefs.getInt('cycleLength');
-    if (savedCycleLength != null) {
-      setState(() {
-        _cycleLength = savedCycleLength; // Atualiza a duração do ciclo
-        _cycleLengthController.text = savedCycleLength.toString(); // Atualiza o campo de entrada
-      });
-    }
-  }
-
-  Future<void> _saveData() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    // Salvar a data de início do ciclo
-    if (_cycleStartDate != null) {
-      prefs.setString('cycleStartDate', _cycleStartDate!.toIso8601String());
-    }
-
-    // Salvar sintomas
-    prefs.setStringList('symptoms', _symptoms);
-
-    // Salvar a duração do ciclo
-    prefs.setInt('cycleLength', _cycleLength); // Salva a nova duração do ciclo
-  }
-
-
   DateTime get _nextPeriodDate =>
-      (_cycleStartDate ?? DateTime.now()).add(Duration(days: _cycleLength)); // Calcula a próxima menstruação
+      (_cycleStartDate ?? DateTime.now()).add(Duration(days: _cycleLength));
 
   DateTime get _fertileStartDate =>
-      (_cycleStartDate ?? DateTime.now()).add(Duration(days: _cycleLength - 14)); // Início do período fértil
+      (_cycleStartDate ?? DateTime.now()).add(Duration(days: _cycleLength - 14));
 
   DateTime get _fertileEndDate =>
-      (_cycleStartDate ?? DateTime.now()).add(Duration(days: _cycleLength - 12)); // Fim do período fértil
+      (_cycleStartDate ?? DateTime.now()).add(Duration(days: _cycleLength - 12));
 
 
   void _addSymptom() {

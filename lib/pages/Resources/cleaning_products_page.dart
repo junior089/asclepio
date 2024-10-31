@@ -38,9 +38,25 @@ class _CleaningProductsPageState extends State<CleaningProductsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Mistura de Produtos de Limpeza', style: TextStyle(color: Colors.black)),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.cleaning_services, color: Colors.blueGrey[800]),
+            SizedBox(width: 10),
+            Text(
+              'Mistura de Produtos',
+              style: TextStyle(
+                color: Colors.blueGrey[800],
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+              ),
+            ),
+          ],
+        ),
+        centerTitle: true,
         backgroundColor: Colors.white,
-        elevation: 2,
+        elevation: 5,
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
@@ -48,12 +64,15 @@ class _CleaningProductsPageState extends State<CleaningProductsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Verifique a mistura de produtos de limpeza',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blueGrey[800],
+              Center(
+                child: Text(
+                  'Verifique a mistura de produtos',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blueGrey[800],
+                  ),
                 ),
               ),
               SizedBox(height: 20),
@@ -83,32 +102,45 @@ class _CleaningProductsPageState extends State<CleaningProductsPage> {
                     });
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.lightBlue[600],
+                    backgroundColor: Colors.teal[400],
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
-                    padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                    textStyle: TextStyle(fontSize: 18),
+                    shadowColor: Colors.grey[400],
+                    padding: EdgeInsets.symmetric(horizontal: 50, vertical: 18),
+                    textStyle: TextStyle(fontSize: 20, color: Colors.white),
                   ),
                   child: Text('Verificar Mistura'),
                 ),
               ),
               SizedBox(height: 20),
               if (result.isNotEmpty)
-                Container(
+                AnimatedContainer(
+                  duration: Duration(milliseconds: 300),
                   padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: result.contains('perigosa') ? Colors.red[50] : Colors.green[50],
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(15),
                     border: Border.all(color: result.contains('perigosa') ? Colors.red : Colors.green, width: 2),
                   ),
-                  child: Text(
-                    result,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: result.contains('perigosa') ? Colors.red : Colors.green,
-                    ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        result.contains('perigosa') ? Icons.warning : Icons.check_circle,
+                        color: result.contains('perigosa') ? Colors.red : Colors.green,
+                      ),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          result,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: result.contains('perigosa') ? Colors.red : Colors.green,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               SizedBox(height: 20),
@@ -127,10 +159,10 @@ class _CleaningProductsPageState extends State<CleaningProductsPage> {
                   itemCount: history.length,
                   itemBuilder: (context, index) {
                     return Card(
-                      margin: EdgeInsets.symmetric(vertical: 5),
+                      margin: EdgeInsets.symmetric(vertical: 8),
                       elevation: 4,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: ListTile(
                         title: Text(
@@ -142,7 +174,7 @@ class _CleaningProductsPageState extends State<CleaningProductsPage> {
                           onPressed: () {
                             setState(() {
                               history.removeAt(index);
-                              _saveHistory(); // Atualiza o histórico após remoção
+                              _saveHistory();
                             });
                           },
                         ),
@@ -156,7 +188,8 @@ class _CleaningProductsPageState extends State<CleaningProductsPage> {
         ),
       ),
     );
-  }
+
+}
 
   DropdownButton<String> _buildProductDropdown(String label, String value, ValueChanged<String?> onChanged) {
     return DropdownButton<String>(

@@ -13,7 +13,7 @@ dependencies:
   percent_indicator: ^4.2.2
   fl_chart: ^0.69.0
   sensors_plus: ^3.0.0
-  vibration: ^1.7.3
+  vibration: ^2.0.1
   flutter_colorpicker: ^1.1.0
   intl: ^0.18.1
   flutter_map: ^4.0.0
@@ -32,6 +32,9 @@ dependencies:
   open_file: ^3.2.1
   permission_handler: ^10.2.0
   flutter_neumorphic: ^3.2.0
+  googleapis: ^9.0.0
+  google_sign_in: ^5.4.0
+  flutter_local_notifications: ^17.2.4
 
 
 dev_dependencies:
