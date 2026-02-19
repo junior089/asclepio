@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 class AvatarSelectionPage extends StatefulWidget {
+  const AvatarSelectionPage({super.key});
+
   @override
-  _AvatarSelectionPageState createState() => _AvatarSelectionPageState();
+  State<AvatarSelectionPage> createState() => _AvatarSelectionPageState();
 }
 
 class _AvatarSelectionPageState extends State<AvatarSelectionPage> {
@@ -22,7 +24,7 @@ class _AvatarSelectionPageState extends State<AvatarSelectionPage> {
         title: const Text('Escolha um Avatar'),
       ),
       body: GridView.builder(
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2, // Número de colunas
           childAspectRatio: 1, // Proporção largura/altura
         ),

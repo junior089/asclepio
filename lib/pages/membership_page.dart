@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class MembershipPage extends StatelessWidget {
-  const MembershipPage({Key? key}) : super(key: key);
+  const MembershipPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +51,11 @@ class MembershipPage extends StatelessWidget {
                         'Ideal para quem quer flexibilidade mensal.',
                         Colors.orangeAccent,
                         Icons.calendar_today,
-                        ['Acesso total a todas as aulas', 'Suporte prioritário', 'Descontos em produtos'],
+                        [
+                          'Acesso total a todas as aulas',
+                          'Suporte prioritário',
+                          'Descontos em produtos'
+                        ],
                       ),
                       const SizedBox(height: 20),
                       _buildMembershipCard(
@@ -61,7 +65,12 @@ class MembershipPage extends StatelessWidget {
                         'A melhor economia para o ano todo.',
                         Colors.tealAccent,
                         Icons.star,
-                        ['Acesso total a todas as aulas', 'Suporte prioritário', 'Descontos em produtos', 'Um mês grátis'],
+                        [
+                          'Acesso total a todas as aulas',
+                          'Suporte prioritário',
+                          'Descontos em produtos',
+                          'Um mês grátis'
+                        ],
                       ),
                     ],
                   ),
@@ -77,24 +86,24 @@ class MembershipPage extends StatelessWidget {
   }
 
   Widget _buildMembershipCard(
-      BuildContext context,
-      String title,
-      String price,
-      String description,
-      Color buttonColor,
-      IconData icon,
-      List<String> benefits,
-      ) {
+    BuildContext context,
+    String title,
+    String price,
+    String description,
+    Color buttonColor,
+    IconData icon,
+    List<String> benefits,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
             color: Colors.black26,
             blurRadius: 10,
-            offset: const Offset(0, 5),
+            offset: Offset(0, 5),
           ),
         ],
       ),
@@ -133,15 +142,17 @@ class MembershipPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: benefits
                 .map((benefit) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4.0),
-              child: Row(
-                children: [
-                  const Icon(Icons.check, size: 16, color: Colors.green),
-                  const SizedBox(width: 8),
-                  Text(benefit, style: const TextStyle(color: Colors.black87)),
-                ],
-              ),
-            ))
+                      padding: const EdgeInsets.symmetric(vertical: 4.0),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.check,
+                              size: 16, color: Colors.green),
+                          const SizedBox(width: 8),
+                          Text(benefit,
+                              style: const TextStyle(color: Colors.black87)),
+                        ],
+                      ),
+                    ))
                 .toList(),
           ),
           const SizedBox(height: 20),
@@ -180,11 +191,6 @@ class MembershipPage extends StatelessWidget {
   }
 
   Widget _buildFooter() {
-    return Container(
-
-      child: Center(
-
-      ),
-    );
+    return const SizedBox.shrink();
   }
 }

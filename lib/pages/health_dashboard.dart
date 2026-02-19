@@ -1,252 +1,409 @@
 import 'package:flutter/material.dart';
-import 'package:percent_indicator/percent_indicator.dart';
-import '../widgets/stat_card.dart';
-import 'package:sensors_plus/sensors_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:asclepio/models/health_data.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:googleapis/fitness/v1.dart' as fitness;
-import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+import '../providers/app_provider.dart';
+import '../theme/app_theme.dart';
 
-class HealthDashboard extends StatefulWidget {
-  final HealthData healthData;
-  final int stepGoal;
-
-  const HealthDashboard({
-    Key? key,
-    required this.healthData,
-    required this.stepGoal,
-  }) : super(key: key);
-
-  @override
-  _HealthDashboardState createState() => _HealthDashboardState();
-}
-
-class _HealthDashboardState extends State<HealthDashboard> {
-  int _steps = 0;
-  double _lastY = 0.0;
-  bool _isStepping = false;
-  int _caloriesBurned = 0;
-  double _distance = 0.0;
-  int _activeMinutes = 0;
-  double _dailyWaterIntake = 0;
-  double _waterConsumed = 0;
-  double _bloodOxygenLevel = 98.0;
-
-  // Novas variáveis para pressão arterial e temperatura corporal
-  String _bloodPressure = '120/80'; // valor padrão
-  double _bodyTemperature = 36.5; // valor padrão
-
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: [fitness.FitnessApi.fitnessActivityReadScope],
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    _requestPermissions(); // Solicitar permissões
-    _dailyWaterIntake = widget.healthData.weight * 35; // em ml
-    _loadData();
-  }
-
-  Future<void> _requestPermissions() async {
-    await Permission.activityRecognition.request();
-    await Permission.sensors.request();
-  }
-
-  Future<void> _initializeGoogleFitData() async {
-    final account = await _googleSignIn.signIn();
-    if (account == null) {
-      // O usuário não fez login
-      return;
-    }
-
-    final authHeaders = await account.authHeaders;
-    final httpClient = GoogleHttpClient(authHeaders);
-    final fitnessApi = fitness.FitnessApi(httpClient);
-
-    final now = DateTime.now();
-    final startTimeMillis = DateTime(now.year, now.month, now.day).millisecondsSinceEpoch.toString();
-    final endTimeMillis = now.millisecondsSinceEpoch.toString();
-
-    // Utilize datasets.get em vez de aggregate
-    final stepsDataSource = await fitnessApi.users.dataSources.datasets.get(
-      "me",
-      "com.google.step_count.delta", // ID da fonte de dados
-      "$startTimeMillis-$endTimeMillis", // Intervalo de tempo
-    );
-
-    int steps = 0;
-    if (stepsDataSource.point != null) {
-      for (var point in stepsDataSource.point!) {
-        // Convertendo num para int
-        steps += (point.value?.first.intVal ?? 0).toInt();
-      }
-    }
-
-    setState(() {
-      _steps = steps;
-      _distance = _steps * 0.00075; // Exemplo: 0,75 metros por passo
-      _activeMinutes = (_steps / 60).toInt();
-      _caloriesBurned = calculateCalories();
-    });
-  }
-
-
-  int calculateCalories() {
-    return (_steps * 0.045).toInt();
-  }
-
-  Future<void> _loadData() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _steps = prefs.getInt('steps') ?? 0;
-      _caloriesBurned = prefs.getInt('caloriesBurned') ?? 0;
-      _distance = prefs.getDouble('distance') ?? 0.0;
-      _activeMinutes = prefs.getInt('activeMinutes') ?? 0;
-      _waterConsumed = prefs.getDouble('waterConsumed') ?? 0;
-      _bloodOxygenLevel = prefs.getDouble('bloodOxygenLevel') ?? 96.0;
-      _bloodPressure = prefs.getString('bloodPressure') ?? '120/80';
-      _bodyTemperature = prefs.getDouble('bodyTemperature') ?? 36.5;
-    });
-  }
-
-  Future<void> _saveData() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setInt('steps', _steps);
-    prefs.setInt('caloriesBurned', _caloriesBurned);
-    prefs.setDouble('distance', _distance);
-    prefs.setInt('activeMinutes', _activeMinutes);
-    prefs.setDouble('waterConsumed', _waterConsumed);
-    prefs.setDouble('bloodOxygenLevel', _bloodOxygenLevel);
-    prefs.setString('bloodPressure', _bloodPressure);
-    prefs.setDouble('bodyTemperature', _bodyTemperature);
-  }
-
-  void _addWaterConsumption(double amount) {
-    setState(() {
-      _waterConsumed += amount;
-    });
-    _saveData();
-  }
+class HealthDashboard extends StatelessWidget {
+  const HealthDashboard({super.key});
 
   @override
   Widget build(BuildContext context) {
-    double progress = _steps / widget.stepGoal;
-    double waterProgress = (_waterConsumed / _dailyWaterIntake).clamp(0, 1);
+    return Consumer<AppProvider>(
+      builder: (context, p, _) {
+        final moveProgress =
+            p.stepsGoal > 0 ? (p.steps / p.stepsGoal).clamp(0.0, 1.0) : 0.0;
+        final exProgress = p.moveMinutesGoal > 0
+            ? (p.activityMinutes / p.moveMinutesGoal).clamp(0.0, 1.0)
+            : 0.0;
+        final calProgress = p.caloriesGoal > 0
+            ? (p.activeCalories / p.caloriesGoal).clamp(0.0, 1.0)
+            : 0.0;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Health', style: TextStyle(color: Colors.black)),
-        backgroundColor: Colors.white,
-        elevation: 0,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(9.0),
-        children: [
-          CircularPercentIndicator(
-            radius: 100.0,
-            lineWidth: 12.0,
-            percent: progress > 1.0 ? 1.0 : progress,
-            animation: true,
-            animationDuration: 1200,
-            center: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  "${(progress * 100).toStringAsFixed(0)}%",
-                  style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+        return Scaffold(
+          backgroundColor: AppTheme.background,
+          body: CustomScrollView(
+            slivers: [
+              // ── Header ──────────────────────────────────────────────────
+              SliverToBoxAdapter(
+                child: SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Olá, ${p.userName.split(' ').first}',
+                                style: const TextStyle(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppTheme.textPrimary,
+                                    letterSpacing: -0.5),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _greeting(),
+                                style: const TextStyle(
+                                    fontSize: 14,
+                                    color: AppTheme.textSecondary),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            gradient: AppTheme.primaryGradient,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(Icons.favorite_rounded,
+                              color: Colors.white, size: 22),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                const Text("Steps", style: TextStyle(fontSize: 16)),
-              ],
-            ),
-            progressColor: Colors.redAccent,
-          ),
-          const SizedBox(height: 20),
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            crossAxisSpacing: 12.0,
-            mainAxisSpacing: 12.0,
-            children: [
-              StatCard(
-                title: 'Calories',
-                value: '$_caloriesBurned kcal',
-                icon: Icons.local_fire_department,
-                color: Colors.red,
               ),
-              StatCard(
-                title: 'Steps',
-                value: '$_steps passos',
-                icon: Icons.directions_run,
-                color: Colors.blue,
+
+              // ── Activity Rings ──────────────────────────────────────────
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                  child: Container(
+                    decoration: AppTheme.cardDecoration,
+                    padding: const EdgeInsets.all(24),
+                    child: Row(
+                      children: [
+                        // Rings
+                        SizedBox(
+                          width: 130,
+                          height: 130,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              _ring(130, moveProgress, AppTheme.moveRing),
+                              _ring(100, exProgress, AppTheme.exerciseRing),
+                              _ring(70, calProgress, AppTheme.standRing),
+                              const Icon(Icons.directions_walk_rounded,
+                                  color: AppTheme.textLight, size: 22),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 24),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _ringLabel('Passos', '${p.steps.toInt()}',
+                                  '/${p.stepsGoal}', AppTheme.moveRing),
+                              const SizedBox(height: 14),
+                              _ringLabel(
+                                  'Exercício',
+                                  '${p.activityMinutes.toInt()}',
+                                  '/${p.moveMinutesGoal} min',
+                                  AppTheme.exerciseRing),
+                              const SizedBox(height: 14),
+                              _ringLabel(
+                                  'Calorias',
+                                  '${p.activeCalories.toInt()}',
+                                  '/${p.caloriesGoal} kcal',
+                                  AppTheme.standRing),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-              StatCard(
-                title: 'Distance',
-                value: '$_distance km',
-                icon: Icons.directions_walk,
-                color: Colors.green,
+
+              // ── Stats Grid ─────────────────────────────────────────────
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                  child: Row(
+                    children: [
+                      _statCard(
+                          '❤️', '${p.heartRate}', 'BPM', AppTheme.primary),
+                      const SizedBox(width: 12),
+                      _statCard('🌡️', p.bodyTemp.toStringAsFixed(1), '°C',
+                          const Color(0xFFFF9800)),
+                    ],
+                  ),
+                ),
               ),
-              StatCard(
-                title: 'Weight',
-                value: '${widget.healthData.weight} kg',
-                icon: Icons.fitness_center,
-                color: Colors.cyan,
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+                  child: Row(
+                    children: [
+                      _statCard('🩸', p.bloodPressure, 'mmHg',
+                          const Color(0xFF7B1FA2)),
+                      const SizedBox(width: 12),
+                      _statCard(
+                          '💧',
+                          '${((p.waterConsumed / p.dailyWaterGoal.clamp(1, double.infinity)) * 100).toInt()}%',
+                          'Água',
+                          const Color(0xFF2196F3)),
+                    ],
+                  ),
+                ),
               ),
-              StatCard(
-                title: 'Heart Rate',
-                value: '${widget.healthData.heartRate} bpm',
-                icon: Icons.favorite,
-                color: Colors.pink,
+
+              // ── IMC Card ────────────────────────────────────────────────
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                  child: Container(
+                    decoration: AppTheme.cardDecoration,
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: _bmiColor(p.bmi).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Center(
+                            child: Text(
+                              p.bmi.toStringAsFixed(1),
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                  color: _bmiColor(p.bmi)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Índice de Massa Corporal',
+                                  style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppTheme.textPrimary)),
+                              const SizedBox(height: 4),
+                              Text(
+                                _bmiCategory(p.bmi),
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    color: _bmiColor(p.bmi),
+                                    fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text('${p.userWeight.toStringAsFixed(1)} kg',
+                                style: const TextStyle(
+                                    fontSize: 14, fontWeight: FontWeight.w700)),
+                            Text('${p.userHeight.toStringAsFixed(0)} cm',
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppTheme.textSecondary)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-              StatCard(
-                title: 'Water Intake',
-                value: '${_waterConsumed.toStringAsFixed(1)} ml / ${_dailyWaterIntake.toStringAsFixed(1)} ml',
-                icon: Icons.local_drink,
-                color: Colors.blueAccent,
-              ),
-              StatCard(
-                title: 'Oxygen Level',
-                value: '${_bloodOxygenLevel.toStringAsFixed(1)} %',
-                icon: Icons.air,
-                color: Colors.orange,
-              ),
-              StatCard(
-                title: 'Blood Pressure',
-                value: _bloodPressure,
-                icon: Icons.monitor_heart,
-                color: Colors.purple,
-              ),
-              StatCard(
-                title: 'B Temperature',
-                value: '${_bodyTemperature.toStringAsFixed(1)} °C',
-                icon: Icons.thermostat,
-                color: Colors.teal,
-              ),
+
+              // ── Última Atividade ────────────────────────────────────────
+              if (p.gymHistory.isNotEmpty || p.cardioHistory.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Atividade Recente',
+                            style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.textPrimary)),
+                        const SizedBox(height: 12),
+                        if (p.gymHistory.isNotEmpty)
+                          _activityCard(
+                            Icons.fitness_center_rounded,
+                            p.gymHistory.first['muscleGroup'] ?? 'Treino',
+                            '${(p.gymHistory.first['exercises'] as List?)?.length ?? 0} exercícios • ${p.gymHistory.first['durationMinutes'] ?? 0}min',
+                            AppTheme.primary,
+                          ),
+                        if (p.cardioHistory.isNotEmpty)
+                          _activityCard(
+                            Icons.directions_run_rounded,
+                            p.cardioHistory.first['type'] ?? 'Corrida',
+                            '${(p.cardioHistory.first['distance'] as num?)?.toStringAsFixed(2) ?? '0'} km • ${p.cardioHistory.first['calories'] ?? 0} kcal',
+                            const Color(0xFF4CAF50),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  static String _greeting() {
+    final h = DateTime.now().hour;
+    if (h < 12) return 'Bom dia! ☀️';
+    if (h < 18) return 'Boa tarde! 🌤️';
+    return 'Boa noite! 🌙';
+  }
+
+  static Widget _ring(double size, double progress, Color color) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CircularProgressIndicator(
+        value: progress,
+        strokeWidth: 10,
+        strokeCap: StrokeCap.round,
+        backgroundColor: color.withValues(alpha: 0.1),
+        valueColor: AlwaysStoppedAnimation(color),
+      ),
+    );
+  }
+
+  static Widget _ringLabel(
+      String label, String value, String suffix, Color color) {
+    return Row(
+      children: [
+        Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 8),
+        RichText(
+          text: TextSpan(
+            style: const TextStyle(fontSize: 14, fontFamily: 'Roboto'),
+            children: [
+              TextSpan(
+                  text: '$label ',
+                  style: const TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontWeight: FontWeight.w500)),
+              TextSpan(
+                  text: value,
+                  style: TextStyle(color: color, fontWeight: FontWeight.w800)),
+              TextSpan(
+                  text: suffix,
+                  style:
+                      const TextStyle(color: AppTheme.textLight, fontSize: 12)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  static Widget _statCard(
+      String emoji, String value, String label, Color color) {
+    return Expanded(
+      child: Container(
+        decoration: AppTheme.cardDecoration,
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Center(
+                  child: Text(emoji, style: const TextStyle(fontSize: 20))),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(value,
+                      style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.textPrimary)),
+                  Text(label,
+                      style: const TextStyle(
+                          fontSize: 11, color: AppTheme.textSecondary)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static Widget _activityCard(
+      IconData icon, String title, String subtitle, Color color) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: AppTheme.cardDecoration,
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textPrimary)),
+                const SizedBox(height: 2),
+                Text(subtitle,
+                    style: const TextStyle(
+                        fontSize: 12, color: AppTheme.textSecondary)),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right_rounded,
+              color: AppTheme.textLight, size: 20),
         ],
       ),
     );
   }
 
-  @override
-  void dispose() {
-    _saveData();
-    super.dispose();
+  static Color _bmiColor(double bmi) {
+    if (bmi < 18.5) return const Color(0xFF2196F3);
+    if (bmi < 25) return const Color(0xFF4CAF50);
+    if (bmi < 30) return const Color(0xFFFF9800);
+    return AppTheme.primary;
   }
-}
 
-// Implementação do cliente HTTP do Google
-class GoogleHttpClient extends http.BaseClient {
-  final Map<String, String> _headers;
-
-  GoogleHttpClient(this._headers);
-
-  Future<http.StreamedResponse> send(http.BaseRequest request) {
-    request.headers.addAll(_headers);
-    return request.send();
+  static String _bmiCategory(double bmi) {
+    if (bmi < 18.5) return 'Abaixo do peso';
+    if (bmi < 25) return 'Peso normal';
+    if (bmi < 30) return 'Sobrepeso';
+    return 'Obesidade';
   }
 }

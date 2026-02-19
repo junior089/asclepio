@@ -1,125 +1,128 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'providers/app_provider.dart';
+import 'theme/asclepio_theme.dart';
 import 'pages/health_dashboard.dart';
-import 'pages/Profile/profile_page.dart';
 import 'pages/exercise_page.dart';
 import 'pages/Resources/resoucers_page.dart';
-import 'pages/NearbyHospitalsPage.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:asclepio/models/health_data.dart';
+import 'pages/Profile/profile_page.dart';
+import 'pages/onboarding_page.dart';
+import 'pages/auth_page.dart';
 
-void main() => runApp(MyApp());
-
-class MyApp extends StatefulWidget {
-  @override
-  _MyAppState createState() => _MyAppState();
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Supabase.initialize(
+    url: 'https://efxjrehnyuzgmizpqzso.supabase.co',
+    anonKey: 'sb_publishable_ddH7FIxMj9lDerveSh_DoQ_26H31B6k',
+  );
+  runApp(const AsclepioApp());
 }
 
-class _MyAppState extends State<MyApp> {
-  int _currentIndex = 0;
-
-  final HealthData healthData = HealthData(
-    activeCalories: 300,
-    activityMinutes: 30,
-    hoursActive: 12,
-    steps: 6000,
-    totalSteps: 10000,
-    distance: 6.7,
-    tasksCompleted: 8,
-    weight: 64.2,
-    heartRate: 75,
-  );
-
-  String userName = "João Silva";
-  int userAge = 25;
-  double userHeight = 1.75;
-  int stepGoal = 10000; // Define o valor inicial da meta de passos
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUserData();
-  }
-
-  // Função para carregar dados do Shared Preferences
-  Future<void> _loadUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      userName = prefs.getString('userName') ?? "João Silva";
-      userAge = prefs.getInt('userAge') ?? 25;
-      userHeight = prefs.getDouble('userHeight') ?? 1.75;
-      healthData.weight = prefs.getDouble('userWeight') ?? 64.2;
-      stepGoal = prefs.getInt('stepGoal') ?? 10000;
-    });
-  }
-
-  // Função para salvar dados no Shared Preferences
-  Future<void> _saveUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('userName', userName);
-    await prefs.setInt('userAge', userAge);
-    await prefs.setDouble('userHeight', userHeight);
-    await prefs.setDouble('userWeight', healthData.weight);
-    await prefs.setInt('stepGoal', stepGoal);
-  }
-
-  // Calcula calorias com base nos passos
-  void _calculateCalories() {
-    healthData.activeCalories = healthData.steps * 0.04;
-  }
-
-  List<Widget> _pages() {
-    return [
-      HealthDashboard(
-        healthData: healthData,
-        stepGoal: stepGoal,
-      ),
-      const ExercisePage(),
-      ResourcesPage(userWeight: healthData.weight),
-      NearbyHospitalsPage(),
-      ProfilePage(
-        userName: userName,
-        userAge: userAge,
-        weight: healthData.weight,
-        height: userHeight,
-        onProfileUpdated: (String name, int age, double weight, double height, int newStepGoal) {
-          setState(() {
-            userName = name;
-            userAge = age;
-            healthData.weight = weight;
-            userHeight = height;
-            stepGoal = newStepGoal;
-            _calculateCalories();
-            _saveUserData(); // Salva os dados após a atualização do perfil
-          });
-        },
-        stepGoal: stepGoal,
-      ),
-    ];
-  }
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
-  }
+class AsclepioApp extends StatelessWidget {
+  const AsclepioApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
-        body: _pages()[_currentIndex],
-        bottomNavigationBar: BottomNavigationBar(
+    return ChangeNotifierProvider(
+      create: (_) => AppProvider(),
+      child: MaterialApp(
+        title: 'Asclépio',
+        theme: AsclepioTheme.light,
+        darkTheme: AsclepioTheme.dark,
+        themeMode: ThemeMode.system,
+        home: const AuthGate(),
+        debugShowCheckedModeBanner: false,
+      ),
+    );
+  }
+}
+
+/// Decide a tela inicial baseado no estado de auth.
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final session = Supabase.instance.client.auth.currentSession;
+    if (session == null) {
+      return const AuthPage();
+    }
+    // Usuário logado → verificar se completou onboarding
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: Supabase.instance.client
+          .from('profiles')
+          .select()
+          .eq('id', session.user.id)
+          .maybeSingle(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+                child: CircularProgressIndicator(color: AsclepioTheme.primary)),
+          );
+        }
+        final profile = snapshot.data;
+        if (profile == null || profile['onboarding_completed'] != true) {
+          return const OnboardingPage();
+        }
+        // Carregar dados do perfil no provider
+        context.read<AppProvider>().loadFromSupabase();
+        return const MainScreen();
+      },
+    );
+  }
+}
+
+class MainScreen extends StatefulWidget {
+  const MainScreen({super.key});
+
+  @override
+  State<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> {
+  int _currentIndex = 0;
+
+  static const List<Widget> _pages = [
+    HealthDashboard(),
+    ExercisePage(),
+    ResourcesPage(),
+    ProfilePage(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _pages,
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          boxShadow: AsclepioTheme.shadowSm,
+        ),
+        child: BottomNavigationBar(
           currentIndex: _currentIndex,
-          onTap: _onItemTapped,
-          selectedItemColor: Colors.redAccent,
-          unselectedItemColor: Colors.deepOrange,
-          showUnselectedLabels: true,
+          onTap: (i) => setState(() => _currentIndex = i),
           items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-            BottomNavigationBarItem(icon: Icon(Icons.directions_run), label: 'Exercícios'),
-            BottomNavigationBarItem(icon: Icon(Icons.apps), label: 'Recursos'),
-            BottomNavigationBarItem(icon: Icon(Icons.local_hospital_outlined), label: 'Nearby'),
-            BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.dashboard_rounded),
+              label: 'Início',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.fitness_center_rounded),
+              label: 'Exercícios',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.grid_view_rounded),
+              label: 'Recursos',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_rounded),
+              label: 'Perfil',
+            ),
           ],
         ),
       ),

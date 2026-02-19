@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class CleaningProductsPage extends StatefulWidget {
-  const CleaningProductsPage({Key? key}) : super(key: key);
+  const CleaningProductsPage({super.key});
 
   @override
-  _CleaningProductsPageState createState() => _CleaningProductsPageState();
+  State<CleaningProductsPage> createState() => _CleaningProductsPageState();
 }
 
 class _CleaningProductsPageState extends State<CleaningProductsPage> {
@@ -42,7 +42,7 @@ class _CleaningProductsPageState extends State<CleaningProductsPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.cleaning_services, color: Colors.blueGrey[800]),
-            SizedBox(width: 10),
+            const SizedBox(width: 10),
             Text(
               'Mistura de Produtos',
               style: TextStyle(
@@ -75,28 +75,30 @@ class _CleaningProductsPageState extends State<CleaningProductsPage> {
                   ),
                 ),
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               _buildProductDropdown('Produto 1', selectedProduct1, (newValue) {
                 setState(() {
                   selectedProduct1 = newValue!;
                   result = _checkMixing(selectedProduct1, selectedProduct2);
                 });
               }),
-              SizedBox(height: 15),
+              const SizedBox(height: 15),
               _buildProductDropdown('Produto 2', selectedProduct2, (newValue) {
                 setState(() {
                   selectedProduct2 = newValue!;
                   result = _checkMixing(selectedProduct1, selectedProduct2);
                 });
               }),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               Center(
                 child: ElevatedButton(
                   onPressed: () {
                     setState(() {
                       result = _checkMixing(selectedProduct1, selectedProduct2);
-                      if (!history.contains('$selectedProduct1 + $selectedProduct2')) {
-                        history.add('$selectedProduct1 + $selectedProduct2: $result');
+                      if (!history
+                          .contains('$selectedProduct1 + $selectedProduct2')) {
+                        history.add(
+                            '$selectedProduct1 + $selectedProduct2: $result');
                         _saveHistory();
                       }
                     });
@@ -107,43 +109,57 @@ class _CleaningProductsPageState extends State<CleaningProductsPage> {
                       borderRadius: BorderRadius.circular(30),
                     ),
                     shadowColor: Colors.grey[400],
-                    padding: EdgeInsets.symmetric(horizontal: 50, vertical: 18),
-                    textStyle: TextStyle(fontSize: 20, color: Colors.white),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 50, vertical: 18),
+                    textStyle:
+                        const TextStyle(fontSize: 20, color: Colors.white),
                   ),
-                  child: Text('Verificar Mistura'),
+                  child: const Text('Verificar Mistura'),
                 ),
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               if (result.isNotEmpty)
                 AnimatedContainer(
-                  duration: Duration(milliseconds: 300),
-                  padding: EdgeInsets.all(16),
+                  duration: const Duration(milliseconds: 300),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: result.contains('perigosa') ? Colors.red[50] : Colors.green[50],
+                    color: result.contains('perigosa')
+                        ? Colors.red[50]
+                        : Colors.green[50],
                     borderRadius: BorderRadius.circular(15),
-                    border: Border.all(color: result.contains('perigosa') ? Colors.red : Colors.green, width: 2),
+                    border: Border.all(
+                        color: result.contains('perigosa')
+                            ? Colors.red
+                            : Colors.green,
+                        width: 2),
                   ),
                   child: Row(
                     children: [
                       Icon(
-                        result.contains('perigosa') ? Icons.warning : Icons.check_circle,
-                        color: result.contains('perigosa') ? Colors.red : Colors.green,
+                        result.contains('perigosa')
+                            ? Icons.warning
+                            : Icons.check_circle,
+                        color: result.contains('perigosa')
+                            ? Colors.red
+                            : Colors.green,
                       ),
-                      SizedBox(width: 10),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           result,
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
-                            color: result.contains('perigosa') ? Colors.red : Colors.green,
+                            color: result.contains('perigosa')
+                                ? Colors.red
+                                : Colors.green,
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               Text(
                 'Histórico de Misturas:',
                 style: TextStyle(
@@ -152,14 +168,14 @@ class _CleaningProductsPageState extends State<CleaningProductsPage> {
                   color: Colors.blueGrey[800],
                 ),
               ),
-              SizedBox(height: 10),
-              Container(
+              const SizedBox(height: 10),
+              SizedBox(
                 height: 350,
                 child: ListView.builder(
                   itemCount: history.length,
                   itemBuilder: (context, index) {
                     return Card(
-                      margin: EdgeInsets.symmetric(vertical: 8),
+                      margin: const EdgeInsets.symmetric(vertical: 8),
                       elevation: 4,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -167,10 +183,10 @@ class _CleaningProductsPageState extends State<CleaningProductsPage> {
                       child: ListTile(
                         title: Text(
                           history[index],
-                          style: TextStyle(fontSize: 16),
+                          style: const TextStyle(fontSize: 16),
                         ),
                         trailing: IconButton(
-                          icon: Icon(Icons.delete, color: Colors.red),
+                          icon: const Icon(Icons.delete, color: Colors.red),
                           onPressed: () {
                             setState(() {
                               history.removeAt(index);
@@ -188,10 +204,10 @@ class _CleaningProductsPageState extends State<CleaningProductsPage> {
         ),
       ),
     );
+  }
 
-}
-
-  DropdownButton<String> _buildProductDropdown(String label, String value, ValueChanged<String?> onChanged) {
+  DropdownButton<String> _buildProductDropdown(
+      String label, String value, ValueChanged<String?> onChanged) {
     return DropdownButton<String>(
       isExpanded: true,
       value: value,

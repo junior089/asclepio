@@ -4,13 +4,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
 class MenstrualCyclePage extends StatefulWidget {
-  const MenstrualCyclePage({Key? key}) : super(key: key);
+  const MenstrualCyclePage({super.key});
 
   @override
-  _MenstrualCyclePageState createState() => _MenstrualCyclePageState();
+  State<MenstrualCyclePage> createState() => _MenstrualCyclePageState();
 }
 
-class _MenstrualCyclePageState extends State<MenstrualCyclePage> with SingleTickerProviderStateMixin {
+class _MenstrualCyclePageState extends State<MenstrualCyclePage>
+    with SingleTickerProviderStateMixin {
   DateTime? _cycleStartDate;
   final List<String> _symptoms = [];
   final TextEditingController _symptomController = TextEditingController();
@@ -42,7 +43,8 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> with SingleTick
 
   Future<void> _loadData() async {
     final prefs = await SharedPreferences.getInstance();
-    _cycleStartDate = DateTime.tryParse(prefs.getString('cycleStartDate') ?? '');
+    _cycleStartDate =
+        DateTime.tryParse(prefs.getString('cycleStartDate') ?? '');
     _symptoms.addAll(prefs.getStringList('symptoms') ?? []);
     _cycleLength = prefs.getInt('cycleLength') ?? 28;
     _cycleLengthController.text = _cycleLength.toString();
@@ -58,57 +60,24 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> with SingleTick
     prefs.setInt('cycleLength', _cycleLength);
   }
 
-  void _updateCycleLength(String value) {
-    final int? newLength = int.tryParse(value);
-    if (newLength != null && newLength > 0) {
-      setState(() {
-        _cycleLength = newLength;
-        _saveData();
-      });
-    }
-  }
-
-  bool _isValidCycleLength() => _cycleLength > 0;
-
-  Widget _buildCycleLengthInput() {
-    return TextField(
-      controller: _cycleLengthController,
-      keyboardType: TextInputType.number,
-      decoration: InputDecoration(
-        labelText: 'Duração do ciclo (dias)',
-        border: OutlineInputBorder(),
-        errorText: _cycleLengthController.text.isNotEmpty && !_isValidCycleLength()
-            ? 'Por favor, insira um número válido.'
-            : null,
-      ),
-      onChanged: _updateCycleLength,
-    );
-  }
-
-  Widget _buildCycleLengthFeedback() {
-    return Text(
-      'Duração atual do ciclo: $_cycleLength dias',
-      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-    );
-  }
-
   DateTime get _nextPeriodDate =>
       (_cycleStartDate ?? DateTime.now()).add(Duration(days: _cycleLength));
 
-  DateTime get _fertileStartDate =>
-      (_cycleStartDate ?? DateTime.now()).add(Duration(days: _cycleLength - 14));
+  DateTime get _fertileStartDate => (_cycleStartDate ?? DateTime.now())
+      .add(Duration(days: _cycleLength - 14));
 
-  DateTime get _fertileEndDate =>
-      (_cycleStartDate ?? DateTime.now()).add(Duration(days: _cycleLength - 12));
-
+  DateTime get _fertileEndDate => (_cycleStartDate ?? DateTime.now())
+      .add(Duration(days: _cycleLength - 12));
 
   void _addSymptom() {
-    if (_symptomController.text.isNotEmpty) {
+    final text = _symptomController.text.trim();
+    if (text.isNotEmpty) {
+      final timestamp = DateTime.now().toIso8601String();
       setState(() {
-        _symptoms.add(_symptomController.text);
+        _symptoms.add('$text|||$timestamp');
         _saveData();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Sintoma adicionado: ${_symptomController.text}')),
+          SnackBar(content: Text('Sintoma adicionado: $text')),
         );
         _symptomController.clear();
       });
@@ -125,7 +94,7 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> with SingleTick
         builder: (BuildContext context, Widget? child) {
           return Theme(
             data: Theme.of(context).copyWith(
-              colorScheme: ColorScheme.light(
+              colorScheme: const ColorScheme.light(
                 primary: Colors.pink, // Cor principal do date picker
                 onPrimary: Colors.white, // Texto dos botões
                 onSurface: Colors.black, // Texto da data
@@ -136,41 +105,37 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> with SingleTick
         },
       );
 
+      if (!context.mounted) return;
       if (pickedDate != null) {
         _updateStartDate(pickedDate);
       }
     } catch (e) {
+      if (!context.mounted) return;
       _showErrorDialog(context, "Error picking date. Please try again.");
     }
   }
 
-
   void _updateStartDate(DateTime pickedDate) {
-    if (pickedDate == null || pickedDate.isAfter(DateTime.now())) {
-      // Validando a data, não permite datas futuras ou nulas.
-      return;
-    }
-
+    if (pickedDate.isAfter(DateTime.now())) return;
     setState(() {
       _cycleStartDate = pickedDate;
       _saveData();
     });
   }
 
-
   void _showErrorDialog(BuildContext context, String message) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text("Error"),
+          title: const Text("Error"),
           content: Text(message),
           actions: <Widget>[
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: Text("OK"),
+              child: const Text("OK"),
             ),
           ],
         );
@@ -178,13 +143,12 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> with SingleTick
     );
   }
 
-
   void _removeSymptom(int index) {
     setState(() {
       _symptoms.removeAt(index);
       _saveData();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Sintoma removido')),
+        const SnackBar(content: Text('Sintoma removido')),
       );
     });
   }
@@ -200,10 +164,11 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> with SingleTick
         ),
         backgroundColor: Colors.white,
         elevation: 0, // Remover sombra para um visual mais limpo
-        iconTheme: IconThemeData(color: Colors.pinkAccent),
+        iconTheme: const IconThemeData(color: Colors.pinkAccent),
         actions: [
           IconButton(
-            icon: Icon(Icons.settings, color: Colors.pinkAccent), // Ícone de configuração
+            icon: const Icon(Icons.settings,
+                color: Colors.pinkAccent), // Ícone de configuração
             onPressed: () {
               _showCycleLengthDialog(context);
             },
@@ -232,7 +197,8 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> with SingleTick
   }
 
   void _showCycleLengthDialog(BuildContext context) {
-    TextEditingController cycleLengthController = TextEditingController();
+    final cycleLengthController =
+        TextEditingController(text: _cycleLength.toString());
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -241,7 +207,11 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> with SingleTick
           content: TextField(
             controller: cycleLengthController,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(hintText: "Digite a duração do ciclo"),
+            decoration: const InputDecoration(
+              labelText: 'Duração em dias',
+              hintText: 'Ex: 28',
+            ),
+            autofocus: true,
           ),
           actions: [
             TextButton(
@@ -253,7 +223,14 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> with SingleTick
             TextButton(
               child: const Text('Salvar'),
               onPressed: () {
-                // Aqui você pode salvar a duração do ciclo conforme necessário
+                final val = int.tryParse(cycleLengthController.text);
+                if (val != null && val > 0 && val <= 60) {
+                  setState(() {
+                    _cycleLength = val;
+                    _cycleLengthController.text = val.toString();
+                  });
+                  _saveData();
+                }
                 Navigator.of(context).pop();
               },
             ),
@@ -263,10 +240,9 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> with SingleTick
     );
   }
 
-
   Widget _buildDateHeader() {
     final DateTime today = DateTime.now();
-    final String dayFormat = 'd';
+    const String dayFormat = 'd';
     final List<String> weekDays = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
 
     return Padding(
@@ -274,7 +250,8 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> with SingleTick
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: List.generate(7, (index) {
-          final DateTime currentDay = today.subtract(Duration(days: today.weekday - 1 - index));
+          final DateTime currentDay =
+              today.subtract(Duration(days: today.weekday - 1 - index));
           final bool isToday = index == today.weekday - 1;
 
           return Container(
@@ -311,7 +288,8 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> with SingleTick
   }
 
   Widget _buildCycleStatus() {
-    final daysUntilNextPeriod = _nextPeriodDate.difference(DateTime.now()).inDays;
+    final daysUntilNextPeriod =
+        _nextPeriodDate.difference(DateTime.now()).inDays;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -346,7 +324,7 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> with SingleTick
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey.withValues(alpha: 0.3),
             spreadRadius: 4,
             blurRadius: 8,
             offset: const Offset(3, 3),
@@ -401,9 +379,8 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> with SingleTick
 
   Widget _buildCycleProgress() {
     final DateTime today = DateTime.now();
-    final int daysSinceStart = _cycleStartDate != null
-        ? today.difference(_cycleStartDate!).inDays
-        : 0;
+    final int daysSinceStart =
+        _cycleStartDate != null ? today.difference(_cycleStartDate!).inDays : 0;
 
     return SizedBox(
       width: 225,
@@ -419,7 +396,6 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> with SingleTick
     );
   }
 
-
   Widget _buildContentSection() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -434,8 +410,12 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> with SingleTick
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildContentCard('Dia do ciclo', '${_cycleStartDate != null ? DateTime.now().difference(_cycleStartDate!).inDays : 0}', Colors.pink),
-              _buildContentCard('Fase fértil', '${_isInFertileWindow() ? 'Sim' : 'Não'}', Colors.green),
+              _buildContentCard(
+                  'Dia do ciclo',
+                  '${_cycleStartDate != null ? DateTime.now().difference(_cycleStartDate!).inDays : 0}',
+                  Colors.pink),
+              _buildContentCard('Fase fértil',
+                  _isInFertileWindow() ? 'Sim' : 'Não', Colors.green),
             ],
           ),
         ],
@@ -450,7 +430,7 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> with SingleTick
 
   Widget _buildContentCard(String title, String value, Color color) {
     return Card(
-      color: color.withOpacity(0.2),
+      color: color.withValues(alpha: 0.2),
       child: SizedBox(
         width: 150,
         height: 80,
@@ -464,7 +444,8 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> with SingleTick
             const SizedBox(height: 5),
             Text(
               value,
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color),
+              style: TextStyle(
+                  fontSize: 24, fontWeight: FontWeight.bold, color: color),
             ),
           ],
         ),
@@ -496,67 +477,69 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> with SingleTick
     return Expanded(
       child: _symptoms.isEmpty
           ? const Center(
-        child: Text(
-          'Nenhum sintoma registrado.',
-          style: TextStyle(
-            fontSize: 16,
-            color: Colors.grey,
-            fontStyle: FontStyle.italic,
-          ),
-        ),
-      )
+              child: Text(
+                'Nenhum sintoma registrado.',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            )
           : ListView.builder(
-        itemCount: _symptoms.length,
-        itemBuilder: (context, index) {
-          final symptom = _symptoms[index];
-          final timestamp = DateTime.now().toIso8601String(); // Exemplo de timestamp, pode ajustar.
+              itemCount: _symptoms.length,
+              itemBuilder: (context, index) {
+                final symptom = _symptoms[index];
+                final timestamp = DateTime.now()
+                    .toIso8601String(); // Exemplo de timestamp, pode ajustar.
 
-          return Dismissible(
-            key: Key(symptom),
-            onDismissed: (direction) {
-              setState(() {
-                _removeSymptom(index);
-              });
-              Fluttertoast.showToast(
-                msg: "Sintoma removido",
-                toastLength: Toast.LENGTH_SHORT,
-              );
-            },
-            background: Container(
-              color: Colors.red,
-              alignment: Alignment.centerRight,
-              padding: const EdgeInsets.only(right: 20),
-              child: const Icon(Icons.delete, color: Colors.white),
-            ),
-            child: Card(
-              margin: const EdgeInsets.symmetric(vertical: 8.0),
-              elevation: 6,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: ListTile(
-                title: Text(
-                  symptom,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
-                subtitle: Text(
-                  DateFormat('dd/MM/yyyy HH:mm').format(DateTime.parse(timestamp)),
-                  style: const TextStyle(color: Colors.grey),
-                ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.info_outline),
-                  onPressed: () {
-                    _showSymptomDetails(symptom, timestamp);
+                return Dismissible(
+                  key: Key(symptom),
+                  onDismissed: (direction) {
+                    setState(() {
+                      _removeSymptom(index);
+                    });
+                    Fluttertoast.showToast(
+                      msg: "Sintoma removido",
+                      toastLength: Toast.LENGTH_SHORT,
+                    );
                   },
-                ),
-              ),
+                  background: Container(
+                    color: Colors.red,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 20),
+                    child: const Icon(Icons.delete, color: Colors.white),
+                  ),
+                  child: Card(
+                    margin: const EdgeInsets.symmetric(vertical: 8.0),
+                    elevation: 6,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: ListTile(
+                      title: Text(
+                        symptom,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      subtitle: Text(
+                        DateFormat('dd/MM/yyyy HH:mm')
+                            .format(DateTime.parse(timestamp)),
+                        style: const TextStyle(color: Colors.grey),
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.info_outline),
+                        onPressed: () {
+                          _showSymptomDetails(symptom, timestamp);
+                        },
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
-          );
-        },
-      ),
     );
   }
 
@@ -579,8 +562,6 @@ class _MenstrualCyclePageState extends State<MenstrualCyclePage> with SingleTick
       },
     );
   }
-
-
 }
 
 class CycleProgressPainter extends CustomPainter {
@@ -589,7 +570,8 @@ class CycleProgressPainter extends CustomPainter {
   final DateTime fertileStartDate;
   final DateTime fertileEndDate;
 
-  CycleProgressPainter(this.daysSinceStart, this.cycleLength, this.fertileStartDate, this.fertileEndDate);
+  CycleProgressPainter(this.daysSinceStart, this.cycleLength,
+      this.fertileStartDate, this.fertileEndDate);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -605,22 +587,35 @@ class CycleProgressPainter extends CustomPainter {
       ..color = Colors.green
       ..style = PaintingStyle.fill;
 
-    canvas.drawCircle(Offset(size.width / 2, size.height / 2), size.width / 2, paintBackground);
+    canvas.drawCircle(Offset(size.width / 2, size.height / 2), size.width / 2,
+        paintBackground);
 
-    final double progressAngle = (2 * 3.14159265359 * (daysSinceStart % cycleLength) / cycleLength);
+    final double progressAngle =
+        (2 * 3.14159265359 * (daysSinceStart % cycleLength) / cycleLength);
     canvas.drawArc(
-      Rect.fromCircle(center: Offset(size.width / 2, size.height / 2), radius: size.width / 2),
+      Rect.fromCircle(
+          center: Offset(size.width / 2, size.height / 2),
+          radius: size.width / 2),
       -3.14159265359 / 2,
       progressAngle,
       true,
       paintProgress,
     );
 
-    final double fertileStartAngle = (2 * 3.14159265359 * (cycleLength - (fertileEndDate.difference(fertileStartDate).inDays + 12)) / cycleLength);
-    final double fertileEndAngle = (2 * 3.14159265359 * (cycleLength - (fertileStartDate.difference(fertileEndDate).inDays)) / cycleLength);
+    final double fertileStartAngle = (2 *
+        3.14159265359 *
+        (cycleLength -
+            (fertileEndDate.difference(fertileStartDate).inDays + 12)) /
+        cycleLength);
+    final double fertileEndAngle = (2 *
+        3.14159265359 *
+        (cycleLength - (fertileStartDate.difference(fertileEndDate).inDays)) /
+        cycleLength);
 
     canvas.drawArc(
-      Rect.fromCircle(center: Offset(size.width / 2, size.height / 2), radius: size.width / 2),
+      Rect.fromCircle(
+          center: Offset(size.width / 2, size.height / 2),
+          radius: size.width / 2),
       -3.14159265359 / 2 + fertileStartAngle,
       fertileEndAngle - fertileStartAngle,
       true,
@@ -633,4 +628,3 @@ class CycleProgressPainter extends CustomPainter {
     return true;
   }
 }
-

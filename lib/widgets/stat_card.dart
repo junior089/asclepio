@@ -1,103 +1,162 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
-class StatCard extends StatefulWidget {
+class StatCard extends StatelessWidget {
   final String title;
   final String value;
   final IconData icon;
   final Color color;
+  final String? subtitle;
+  final VoidCallback? onTap;
+  final Widget? trailing;
 
   const StatCard({
-    Key? key,
+    super.key,
     required this.title,
     required this.value,
     required this.icon,
     required this.color,
-  }) : super(key: key);
-
-  @override
-  _StatCardState createState() => _StatCardState();
-}
-
-class _StatCardState extends State<StatCard> {
-  double elevation = 4;
-  bool isPressed = false; // Para controle de animação
+    this.subtitle,
+    this.onTap,
+    this.trailing,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTapDown: (_) => _setElevation(2, true),
-      onTapUp: (_) => _setElevation(4, false),
-      onTapCancel: () => _setElevation(4, false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeInOut,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          color: isPressed ? widget.color.withOpacity(0.1) : Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: widget.color.withOpacity(0.4),
-              blurRadius: elevation * 3,
-              offset: Offset(0, elevation),
+      onTap: onTap,
+      child: Container(
+        decoration: AppTheme.cardDecoration,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: color, size: 20),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                ),
+                if (trailing != null) trailing!,
+              ],
             ),
+            const SizedBox(height: 12),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.textPrimary,
+                letterSpacing: -0.5,
+              ),
+            ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                subtitle!,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.textLight,
+                ),
+              ),
+            ],
           ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 25, horizontal: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildIconContainer(),
-              const SizedBox(height: 10),
-              _buildTitleText(context),
-              const SizedBox(height: 8),
-              _buildValueText(context),
+      ),
+    );
+  }
+}
+
+/// Card grande horizontal estilo Samsung Health
+class WideStatCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData icon;
+  final Color color;
+  final Widget? child;
+  final VoidCallback? onTap;
+
+  const WideStatCard({
+    super.key,
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.color,
+    this.child,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: AppTheme.cardDecoration,
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: color, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        value,
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.textPrimary,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right, color: AppTheme.textLight),
+              ],
+            ),
+            if (child != null) ...[
+              const SizedBox(height: 16),
+              child!,
             ],
-          ),
+          ],
         ),
-      ),
-    );
-  }
-
-  void _setElevation(double newElevation, bool pressed) {
-    setState(() {
-      elevation = newElevation;
-      isPressed = pressed; // Atualiza o estado de pressionado
-    });
-  }
-
-  Widget _buildIconContainer() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(
-          colors: [widget.color.withOpacity(0.6), widget.color],
-          center: Alignment.center,
-          radius: 0.8,
-        ),
-      ),
-      child: Icon(widget.icon, size: 50, color: Colors.white),
-    );
-  }
-
-  Text _buildTitleText(BuildContext context) {
-    return Text(
-      widget.title,
-      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-        fontWeight: FontWeight.bold,
-        color: Colors.black87,
-      ),
-      textAlign: TextAlign.center,
-    );
-  }
-
-  Text _buildValueText(BuildContext context) {
-    return Text(
-      widget.value,
-      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-        color: Colors.grey[600],
-        fontWeight: FontWeight.w600,
       ),
     );
   }
