@@ -13,6 +13,10 @@ CREATE TABLE IF NOT EXISTS profiles (
   gender TEXT DEFAULT 'Masculino',
   blood_type TEXT DEFAULT 'O+',
   goal TEXT DEFAULT 'Saúde geral',
+  activity_level TEXT DEFAULT 'Moderado',
+  goals JSONB DEFAULT '[]'::jsonb,
+  injuries TEXT DEFAULT '',
+  equipment_access JSONB DEFAULT '[]'::jsonb,
   pre_existing_conditions TEXT DEFAULT '',
   avatar_url TEXT DEFAULT '',
   steps_goal INTEGER DEFAULT 8000,
@@ -99,3 +103,18 @@ CREATE TABLE IF NOT EXISTS weekly_plans (
 ALTER TABLE weekly_plans ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can manage own weekly plan" ON weekly_plans
   FOR ALL USING (auth.uid() = user_id);
+
+-- Rotinas de treino
+CREATE TABLE IF NOT EXISTS routines (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL,
+  name TEXT NOT NULL,
+  exercises JSONB NOT NULL DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE routines ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can manage own routines" ON routines
+  FOR ALL USING (auth.uid() = user_id);
+CREATE INDEX idx_routines_user ON routines(user_id, updated_at DESC);

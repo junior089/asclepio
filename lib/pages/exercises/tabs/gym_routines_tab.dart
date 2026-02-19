@@ -1,69 +1,142 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../theme/asclepio_theme.dart';
 import '../../../widgets/health_components.dart';
+import '../../../services/supabase_service.dart';
 import '../active_workout_page.dart';
 import '../workout_builder_page.dart';
 
-class GymRoutinesTab extends StatelessWidget {
+class GymRoutinesTab extends StatefulWidget {
   const GymRoutinesTab({super.key});
+
+  @override
+  State<GymRoutinesTab> createState() => _GymRoutinesTabState();
+}
+
+class _GymRoutinesTabState extends State<GymRoutinesTab> {
+  List<Map<String, dynamic>> _routines = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRoutines();
+  }
+
+  Future<void> _loadRoutines() async {
+    setState(() => _loading = true);
+    final data = await SupabaseService.instance.loadRoutines();
+    if (mounted) {
+      setState(() {
+        _routines = data;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _deleteRoutine(String id) async {
+    await SupabaseService.instance.deleteRoutine(id);
+    _loadRoutines();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Quick Actions ────────────────────────────────────────────────
-            Row(
-              children: [
-                Expanded(
-                  child: _actionButton(
-                    context,
-                    'Início Rápido',
-                    Icons.play_arrow_rounded,
-                    AsclepioTheme.primary,
-                    () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const ActiveWorkoutPage())),
+      body: RefreshIndicator(
+        onRefresh: _loadRoutines,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Quick Actions ──────────────────────────────────────────
+              Row(
+                children: [
+                  Expanded(
+                    child: _actionButton(
+                      context,
+                      'Início Rápido',
+                      Icons.play_arrow_rounded,
+                      AsclepioTheme.primary,
+                      () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const ActiveWorkoutPage())),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _actionButton(
-                    context,
-                    'Nova Rotina',
-                    Icons.add_rounded,
-                    AsclepioTheme.secondary,
-                    () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const WorkoutBuilderPage())),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _actionButton(
+                      context,
+                      'Nova Rotina',
+                      Icons.add_rounded,
+                      AsclepioTheme.secondary,
+                      () async {
+                        await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const WorkoutBuilderPage()));
+                        _loadRoutines(); // Refresh after returning
+                      },
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
+                ],
+              ),
+              const SizedBox(height: 32),
 
-            // ── My Routines ──────────────────────────────────────────────────
-            const SectionHeader(title: 'Minhas Rotinas'),
+              // ── My Routines ────────────────────────────────────────────
+              const SectionHeader(title: 'Minhas Rotinas'),
 
-            // Mock Data for now - will connect to Supabase later
-            _routineCard(context, 'Treino de Empurrar', '6 Exercícios • 45m',
-                DateTime.now().subtract(const Duration(days: 2))),
-            _routineCard(context, 'Treino de Puxar', '7 Exercícios • 50m',
-                DateTime.now().subtract(const Duration(days: 4))),
-            _routineCard(context, 'Pernas A', '5 Exercícios • 60m',
-                DateTime.now().subtract(const Duration(days: 6))),
+              if (_loading)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(40),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else if (_routines.isEmpty)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(40),
+                    child: Column(
+                      children: [
+                        Icon(Icons.fitness_center,
+                            size: 48, color: Colors.grey.shade400),
+                        const SizedBox(height: 12),
+                        Text('Nenhuma rotina criada',
+                            style: TextStyle(
+                                fontSize: 16, color: Colors.grey.shade600)),
+                        const SizedBox(height: 4),
+                        Text('Toque em "Nova Rotina" para começar',
+                            style: TextStyle(
+                                fontSize: 13, color: Colors.grey.shade500)),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                ..._routines.map((routine) => _routineCard(
+                      context,
+                      routine['name'] ?? 'Rotina',
+                      _routineSubtitle(routine),
+                      routine['id'],
+                      routine['exercises'] as List<dynamic>?,
+                    )),
 
-            const SizedBox(height: 100), // Bottom padding
-          ],
+              const SizedBox(height: 100),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  String _routineSubtitle(Map<String, dynamic> routine) {
+    final exercises = routine['exercises'] as List<dynamic>?;
+    final count = exercises?.length ?? 0;
+    return '$count Exercício${count != 1 ? 's' : ''}';
   }
 
   Widget _actionButton(BuildContext context, String label, IconData icon,
@@ -97,11 +170,29 @@ class GymRoutinesTab extends StatelessWidget {
   }
 
   Widget _routineCard(BuildContext context, String name, String details,
-      DateTime lastPerformed) {
+      String? routineId, List<dynamic>? exercises) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: HealthCard(
-        onTap: () {}, // Open routine details
+        onTap: () {
+          HapticFeedback.selectionClick();
+          // Start workout with this routine's exercises
+          if (exercises != null && exercises.isNotEmpty) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const ActiveWorkoutPage(),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Adicione exercícios à rotina primeiro'),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        },
         child: Row(
           children: [
             Container(
@@ -125,10 +216,26 @@ class GymRoutinesTab extends StatelessWidget {
                 ],
               ),
             ),
-            IconButton(
-              icon: const Icon(Icons.more_vert),
-              onPressed: () {},
-              color: Theme.of(context).disabledColor,
+            PopupMenuButton<String>(
+              icon:
+                  Icon(Icons.more_vert, color: Theme.of(context).disabledColor),
+              onSelected: (value) {
+                if (value == 'delete' && routineId != null) {
+                  _deleteRoutine(routineId);
+                }
+              },
+              itemBuilder: (_) => [
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                      SizedBox(width: 8),
+                      Text('Excluir'),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
         ),

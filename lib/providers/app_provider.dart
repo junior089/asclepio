@@ -4,9 +4,7 @@ import 'dart:convert';
 import '../services/supabase_service.dart';
 
 class AppProvider extends ChangeNotifier {
-  // ═══════════════════════════════════════════════════════════════════════════
-  // USUÁRIO
-  // ═══════════════════════════════════════════════════════════════════════════
+  bool isLoading = false;
   String userName = 'Usuário';
   int userAge = 25;
   double userWeight = 70.0;
@@ -17,7 +15,6 @@ class AppProvider extends ChangeNotifier {
   String preExistingConditions = '';
   String userGoal = 'Saúde geral';
 
-  // Computed
   String get selectedAvatar => userAvatar;
   int get stepGoal => stepsGoal;
   double get bmi {
@@ -28,17 +25,11 @@ class AppProvider extends ChangeNotifier {
   String get bloodPressure => '$systolic/$diastolic';
   double get bodyTemperature => bodyTemp;
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // SINAIS VITAIS
-  // ═══════════════════════════════════════════════════════════════════════════
   int heartRate = 72;
   double bodyTemp = 36.5;
   int systolic = 120;
   int diastolic = 80;
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // ATIVIDADE DIÁRIA
-  // ═══════════════════════════════════════════════════════════════════════════
   double steps = 0;
   double distance = 0;
   double activeCalories = 0;
@@ -47,26 +38,16 @@ class AppProvider extends ChangeNotifier {
   int stepsGoal = 8000;
   int caloriesGoal = 500;
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // ÁGUA
-  // ═══════════════════════════════════════════════════════════════════════════
   double waterConsumed = 0;
   double dailyWaterGoal = 0;
   List<Map<String, dynamic>> waterConsumptionLog = [];
   String _lastWaterResetDate = '';
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // HISTÓRICOS
-  // ═══════════════════════════════════════════════════════════════════════════
   List<Map<String, dynamic>> weightHistory = [];
   List<Map<String, dynamic>> symptomsHistory = [];
   List<Map<String, dynamic>> exerciseHistory = [];
   List<Map<String, dynamic>> gymHistory = [];
   List<Map<String, dynamic>> cardioHistory = [];
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // MUSCULAÇÃO — PLANO SEMANAL
-  // ═══════════════════════════════════════════════════════════════════════════
   Map<int, String> weeklyPlan = {
     0: 'Peito + Tríceps',
     1: 'Costas + Bíceps',
@@ -77,14 +58,10 @@ class AppProvider extends ChangeNotifier {
     6: 'Descanso',
   };
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // INIT
-  // ═══════════════════════════════════════════════════════════════════════════
   AppProvider() {
     _loadLocal();
   }
 
-  /// Carrega dados locais (SharedPreferences) como fallback.
   Future<void> _loadLocal() async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -107,7 +84,6 @@ class AppProvider extends ChangeNotifier {
     caloriesGoal = prefs.getInt('caloriesGoal') ?? 500;
     moveMinutesGoal = prefs.getInt('moveMinutesGoal') ?? 30;
 
-    // Água — reset diário
     dailyWaterGoal = userWeight * 35;
     final today = DateTime.now().toIso8601String().substring(0, 10);
     _lastWaterResetDate = prefs.getString('lastWaterResetDate') ?? '';
@@ -143,67 +119,75 @@ class AppProvider extends ChangeNotifier {
 
   /// Carrega dados do Supabase (chamado após login).
   Future<void> loadFromSupabase() async {
-    final svc = SupabaseService.instance;
-    final profile = await svc.loadProfile();
-    if (profile != null) {
-      userName = profile['name'] ?? userName;
-      userAge = profile['age'] ?? userAge;
-      userWeight = (profile['weight'] as num?)?.toDouble() ?? userWeight;
-      userHeight = (profile['height'] as num?)?.toDouble() ?? userHeight;
-      userGender = profile['gender'] ?? userGender;
-      bloodType = profile['blood_type'] ?? bloodType;
-      preExistingConditions =
-          profile['pre_existing_conditions'] ?? preExistingConditions;
-      userGoal = profile['goal'] ?? userGoal;
-      userAvatar = profile['avatar_url'] ?? userAvatar;
-      stepsGoal = profile['steps_goal'] ?? stepsGoal;
-      caloriesGoal = profile['calories_goal'] ?? caloriesGoal;
-      moveMinutesGoal = profile['activity_minutes_goal'] ?? moveMinutesGoal;
-      dailyWaterGoal = userWeight * 35;
-    }
-
-    final gymData = await svc.loadWorkouts();
-    gymHistory = gymData
-        .map((e) => {
-              'muscleGroup': e['muscle_group'],
-              'exercises': e[
-                  'exercises'], // JSONB already parsed? Supabase client usually parses it if it's JSON
-              'durationMinutes': e['duration_minutes'],
-              'totalVolume': e['total_volume'],
-              'date': e['created_at'],
-            })
-        .toList();
-
-    final cardioData = await svc.loadCardio();
-    cardioHistory = cardioData
-        .map((e) => {
-              'type': e['activity_type'],
-              'durationSeconds': e['duration_seconds'],
-              'distance': (e['distance_km'] as num).toDouble(),
-              'pace': (e['pace'] as num).toDouble(),
-              'calories': e['calories'],
-              'date': e['created_at'],
-            })
-        .toList();
-
-    final wh = await svc.loadWeightHistory();
-    if (wh.isNotEmpty) {
-      weightHistory = wh
-          .map((e) => {
-                'weight': e['weight'],
-                'date': e['recorded_at'],
-              })
-          .toList();
-    }
-
-    final plan = await svc.loadWeeklyPlan();
-    if (plan != null && plan['plan'] != null) {
-      final decoded = plan['plan'] as Map<String, dynamic>;
-      // Ensure keys are sorted? No need generally
-      weeklyPlan = decoded.map((k, v) => MapEntry(int.parse(k), v.toString()));
-    }
-
+    isLoading = true;
     notifyListeners();
+    try {
+      final svc = SupabaseService.instance;
+      final profile = await svc.loadProfile();
+      if (profile != null) {
+        userName = profile['name'] ?? userName;
+        userAge = profile['age'] ?? userAge;
+        userWeight = (profile['weight'] as num?)?.toDouble() ?? userWeight;
+        userHeight = (profile['height'] as num?)?.toDouble() ?? userHeight;
+        userGender = profile['gender'] ?? userGender;
+        bloodType = profile['blood_type'] ?? bloodType;
+        preExistingConditions =
+            profile['pre_existing_conditions'] ?? preExistingConditions;
+        userGoal = profile['goal'] ?? userGoal;
+        userAvatar = profile['avatar_url'] ?? userAvatar;
+        stepsGoal = profile['steps_goal'] ?? stepsGoal;
+        caloriesGoal = profile['calories_goal'] ?? caloriesGoal;
+        moveMinutesGoal = profile['activity_minutes_goal'] ?? moveMinutesGoal;
+        dailyWaterGoal = userWeight * 35;
+      }
+
+      final gymData = await svc.loadWorkouts();
+      gymHistory = gymData
+          .map((e) => ({
+                'muscleGroup': e['muscle_group'],
+                'exercises': e['exercises'],
+                'durationMinutes': e['duration_minutes'],
+                'totalVolume': e['total_volume'],
+                'date': e['created_at'],
+              }))
+          .toList();
+
+      final cardioData = await svc.loadCardio();
+      cardioHistory = cardioData
+          .map((e) => ({
+                'type': e['activity_type'],
+                'durationSeconds': e['duration_seconds'],
+                'distance': (e['distance_km'] as num?)?.toDouble() ?? 0.0,
+                'pace': (e['pace'] as num?)?.toDouble() ?? 0.0,
+                'calories': e['calories'],
+                'date': e['created_at'],
+              }))
+          .toList();
+
+      final wh = await svc.loadWeightHistory();
+      if (wh.isNotEmpty) {
+        weightHistory = wh
+            .map((e) => ({
+                  'weight': e['weight'],
+                  'date': e['recorded_at'],
+                }))
+            .toList();
+      }
+
+      final plan = await svc.loadWeeklyPlan();
+      if (plan != null && plan['plan'] != null) {
+        final decoded = plan['plan'] as Map<String, dynamic>;
+        weeklyPlan =
+            decoded.map((k, v) => MapEntry(int.parse(k), v.toString()));
+      }
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Erro ao carregar dados do Supabase: $e');
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

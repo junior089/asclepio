@@ -33,11 +33,15 @@ class _OnboardingPageState extends State<OnboardingPage> {
   String _equipment = 'Gym'; // Gym, Home (Dumbbells), Bodyweight
 
   static const _activityLevels = [
-    {'id': 'Sedentary', 'title': 'Rookie', 'desc': 'Little to no exercise'},
-    {'id': 'Light', 'title': 'Beginner', 'desc': '1-3 days/week'},
-    {'id': 'Moderate', 'title': 'Intermediate', 'desc': '3-5 days/week'},
-    {'id': 'Active', 'title': 'Advanced', 'desc': '6-7 days/week'},
-    {'id': 'Athlete', 'title': 'Elite', 'desc': 'Professional training'},
+    {
+      'id': 'Sedentary',
+      'title': 'Iniciante',
+      'desc': 'Pouco ou nenhum exercício'
+    },
+    {'id': 'Light', 'title': 'Leve', 'desc': '1-3 dias/semana'},
+    {'id': 'Moderate', 'title': 'Moderado', 'desc': '3-5 dias/semana'},
+    {'id': 'Active', 'title': 'Avançado', 'desc': '6-7 dias/semana'},
+    {'id': 'Athlete', 'title': 'Atleta', 'desc': 'Treino profissional'},
   ];
 
   @override
@@ -67,7 +71,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   Future<void> _finish() async {
     if (_nameCtrl.text.isEmpty) {
-      // Should have been validated earlier, but safeguard
       _pageCtrl.animateToPage(1,
           duration: const Duration(milliseconds: 300), curve: Curves.ease);
       return;
@@ -75,7 +78,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
     setState(() => _saving = true);
 
-    // Save to Provider & Supabase
     try {
       final uid = Supabase.instance.client.auth.currentUser?.id;
       if (uid != null) {
@@ -87,16 +89,15 @@ class _OnboardingPageState extends State<OnboardingPage> {
           'weight': _weight,
           'height': _height,
           'activity_level': _activityLevel,
-          'goals': _goals,
-          'injuries': _injuries,
-          'equipment_access': _equipment,
+          'goals': _goals, 
+          'injuries': _injuries.join(', '), 
+          'equipment_access': [_equipment], 
           'onboarding_completed': true,
           'updated_at': DateTime.now().toIso8601String(),
         };
 
         await Supabase.instance.client.from('profiles').upsert(data);
 
-        // Also update local provider
         if (mounted) {
           await context.read<AppProvider>().loadFromSupabase();
         }
@@ -109,8 +110,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
         (route) => false,
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Error saving profile: $e'),
+        content: Text('Erro ao salvar perfil: $e'),
         backgroundColor: AsclepioTheme.error,
       ));
       setState(() => _saving = false);
@@ -119,7 +121,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Progress calculation
     final progress = (_currentPage + 1) / 6;
 
     return Scaffold(
@@ -127,7 +128,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // ── Header (Progress) ────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               child: Row(
@@ -166,7 +166,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
               ),
             ),
 
-            // ── Content ──────────────────────────────────────────────────────
             Expanded(
               child: PageView(
                 controller: _pageCtrl,
@@ -177,17 +176,16 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   _stepIdentity(),
                   _stepBody(),
                   _stepActivity(),
-                  _stepConditions(), // Injuries etc
-                  _stepGoals(), // Equipment & Goals
+                  _stepConditions(),
+                  _stepGoals(),
                 ],
               ),
             ),
 
-            // ── Footer ───────────────────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.all(24),
               child: GradientButton(
-                text: _currentPage == 5 ? 'COMPLETE SETUP' : 'CONTINUE',
+                text: _currentPage == 5 ? 'CONCLUIR' : 'CONTINUAR',
                 onPressed: _saving ? null : _next,
                 isLoading: _saving,
                 icon: _currentPage == 5 ? Icons.check : Icons.arrow_forward,
@@ -199,7 +197,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
-  // ── Step 0: Welcome ────────────────────────────────────────────────────────
   Widget _stepWelcome() {
     return Padding(
       padding: const EdgeInsets.all(32),
@@ -210,13 +207,13 @@ class _OnboardingPageState extends State<OnboardingPage> {
               size: 80, color: AsclepioTheme.primary),
           const SizedBox(height: 32),
           Text(
-            "LET'S BUILD YOUR\nPROFILE",
+            "VAMOS MONTAR\nSEU PERFIL",
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.displayMedium,
           ),
           const SizedBox(height: 16),
           Text(
-            "To customize your training plan, we need to know your stats, limits, and ambitions.",
+            "Para personalizar seu plano de treino, precisamos conhecer suas medidas, limites e objetivos.",
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
@@ -225,26 +222,25 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
-  // ── Step 1: Identity ───────────────────────────────────────────────────────
   Widget _stepIdentity() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("WHO ARE YOU?", style: Theme.of(context).textTheme.displaySmall),
+          Text("QUEM É VOCÊ?", style: Theme.of(context).textTheme.displaySmall),
           const SizedBox(height: 32),
           TextFormField(
             controller: _nameCtrl,
             textCapitalization: TextCapitalization.words,
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             decoration: const InputDecoration(
-              labelText: 'Display Name',
+              labelText: 'Nome',
               prefixIcon: Icon(Icons.person_outline),
             ),
           ),
           const SizedBox(height: 24),
-          Text("Date of Birth (Age: $_age)",
+          Text("Data de Nascimento (Idade: $_age)",
               style: Theme.of(context).textTheme.labelLarge),
           Slider(
             value: _age.toDouble(),
@@ -254,10 +250,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
             onChanged: (v) => setState(() => _age = v.round()),
           ),
           const SizedBox(height: 24),
-          Text("Biologic Sex", style: Theme.of(context).textTheme.labelLarge),
+          Text("Sexo Biológico", style: Theme.of(context).textTheme.labelLarge),
           const SizedBox(height: 12),
           Row(
-            children: ['Male', 'Female'].map((g) {
+            children: ['Masculino', 'Feminino'].map((g) {
               final selected = _gender == g;
               return Expanded(
                 child: GestureDetector(
@@ -294,23 +290,23 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
-  // ── Step 2: Body Stats ─────────────────────────────────────────────────────
   Widget _stepBody() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("BODY STATS", style: Theme.of(context).textTheme.displaySmall),
+          Text("MEDIDAS CORPORAIS",
+              style: Theme.of(context).textTheme.displaySmall),
           const SizedBox(height: 16),
           Text(
-              "Accurate data helps us calculate your calorie burn and metabolic rate.",
+              "Dados precisos nos ajudam a calcular sua queima calórica e taxa metabólica.",
               style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(height: 40),
-          _statCard('Weight', '${_weight.toStringAsFixed(1)} kg', _weight, 30,
+          _statCard('Peso', '${_weight.toStringAsFixed(1)} kg', _weight, 30,
               200, (v) => setState(() => _weight = v)),
           const SizedBox(height: 24),
-          _statCard('Height', '${_height.toStringAsFixed(0)} cm', _height, 100,
+          _statCard('Altura', '${_height.toStringAsFixed(0)} cm', _height, 100,
               230, (v) => setState(() => _height = v)),
         ],
       ),
@@ -345,14 +341,13 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
-  // ── Step 3: Activity Level ─────────────────────────────────────────────────
   Widget _stepActivity() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("ACTIVITY LEVEL",
+          Text("NÍVEL DE ATIVIDADE",
               style: Theme.of(context).textTheme.displaySmall),
           const SizedBox(height: 32),
           ..._activityLevels.map((lvl) {
@@ -407,25 +402,23 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
-  // ── Step 4: Injuries ───────────────────────────────────────────────────────
   Widget _stepConditions() {
     final bodyParts = [
-      'Shoulders',
-      'Lower Back',
-      'Knees',
-      'Wrists',
-      'Ankles',
-      'Neck'
+      'Ombros',
+      'Lombar',
+      'Joelhos',
+      'Pulsos',
+      'Tornozelos',
+      'Pescoço'
     ];
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("ANY LIMITATIONS?",
-              style: Theme.of(context).textTheme.displaySmall),
+          Text("LIMITAÇÕES?", style: Theme.of(context).textTheme.displaySmall),
           const SizedBox(height: 16),
-          Text("We'll avoid exercises that stress these areas.",
+          Text("Vamos evitar exercícios que sobrecarreguem essas áreas.",
               style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(height: 32),
           Wrap(
@@ -482,36 +475,36 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
-  // ── Step 5: Goals & Equipment ──────────────────────────────────────────────
   Widget _stepGoals() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("FINAL SETUP", style: Theme.of(context).textTheme.displaySmall),
+          Text("CONFIGURAÇÃO FINAL",
+              style: Theme.of(context).textTheme.displaySmall),
           const SizedBox(height: 32),
 
-          Text("Equipment Access",
+          Text("Acesso a Equipamentos",
               style: Theme.of(context).textTheme.labelLarge),
           const SizedBox(height: 12),
-          _radioOption('Gym', 'Full access to machines & weights'),
-          _radioOption('Home (Dumbbells)', 'Basic free weights'),
-          _radioOption('Bodyweight', 'No equipment needed'),
+          _radioOption('Gym', 'Academia com aparelhos e pesos'),
+          _radioOption('Home (Dumbbells)', 'Pesos livres em casa'),
+          _radioOption('Bodyweight', 'Sem equipamento'),
 
           const SizedBox(height: 32),
-          Text("Primary Goal", style: Theme.of(context).textTheme.labelLarge),
+          Text("Objetivo Principal",
+              style: Theme.of(context).textTheme.labelLarge),
           const SizedBox(height: 12),
-          // Simple multi-select via chips
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              'Build Muscle',
-              'Lose Fat',
-              'Strength',
-              'Endurance',
-              'Flexibility'
+              'Ganhar Músculo',
+              'Perder Gordura',
+              'Força',
+              'Resistência',
+              'Flexibilidade'
             ].map((g) {
               final selected = _goals.contains(g);
               return FilterChip(

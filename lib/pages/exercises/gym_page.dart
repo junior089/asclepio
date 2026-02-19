@@ -30,7 +30,7 @@ class _GymPageState extends State<GymPage> with SingleTickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Gym Workspace'),
+        title: const Text('Musculação'),
         centerTitle: true,
         bottom: TabBar(
           controller: _tabCtrl,
@@ -39,9 +39,9 @@ class _GymPageState extends State<GymPage> with SingleTickerProviderStateMixin {
           unselectedLabelColor: Theme.of(context).disabledColor,
           labelStyle: const TextStyle(fontWeight: FontWeight.bold),
           tabs: const [
-            Tab(text: 'Routines'),
-            Tab(text: 'Library'),
-            Tab(text: 'History'),
+            Tab(text: 'Rotinas'),
+            Tab(text: 'Biblioteca'),
+            Tab(text: 'Histórico'),
           ],
         ),
       ),

@@ -18,7 +18,7 @@ class ActivityDetailsPage extends StatelessWidget {
       appBar: AppBar(
         title: Text(isGym
             ? 'Treino ${activity['muscleGroup']}'
-            : '${activity['type']} Details'),
+            : 'Detalhes ${activity['type']}'),
         centerTitle: true,
       ),
       body: SingleChildScrollView(

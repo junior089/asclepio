@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../theme/asclepio_theme.dart';
 import '../../data/gym_exercises_data.dart';
+import '../../services/supabase_service.dart';
 
 class WorkoutBuilderPage extends StatefulWidget {
   const WorkoutBuilderPage({super.key});
@@ -32,19 +33,43 @@ class _WorkoutBuilderPageState extends State<WorkoutBuilderPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('New Routine'),
+        title: const Text('Nova Rotina'),
         actions: [
           TextButton(
-            onPressed: () {
-              // Save routine logic (Implemented)
+            onPressed: () async {
+              final name = _nameCtrl.text.trim();
+              if (name.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Digite um nome para a rotina')),
+                );
+                return;
+              }
+              if (_selectedExercises.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text('Adicione pelo menos um exercício')),
+                );
+                return;
+              }
+              // Save to Supabase
+              await SupabaseService.instance.saveRoutine(
+                name: name,
+                exercises: _selectedExercises
+                    .map((e) => ({
+                          'name': e.name,
+                          'muscleGroup': e.muscleGroup,
+                          'equipment': e.equipment,
+                        }))
+                    .toList(),
+              );
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Rotina salva com sucesso!')),
                 );
+                Navigator.pop(context);
               }
-              Navigator.pop(context);
             },
-            child: const Text('SAVE',
+            child: const Text('SALVAR',
                 style: TextStyle(
                     color: AsclepioTheme.primary, fontWeight: FontWeight.bold)),
           )
@@ -57,8 +82,8 @@ class _WorkoutBuilderPageState extends State<WorkoutBuilderPage> {
             child: TextField(
               controller: _nameCtrl,
               decoration: const InputDecoration(
-                labelText: 'Routine Name',
-                hintText: 'e.g. Chest & Triceps A',
+                labelText: 'Nome da Rotina',
+                hintText: 'ex: Peito e Tríceps A',
                 prefixIcon: Icon(Icons.edit),
               ),
             ),
@@ -92,7 +117,7 @@ class _WorkoutBuilderPageState extends State<WorkoutBuilderPage> {
               child: ElevatedButton.icon(
                 onPressed: _addExercise,
                 icon: const Icon(Icons.add),
-                label: const Text('ADD EXERCISE'),
+                label: const Text('ADICIONAR EXERCÍCIO'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Theme.of(context).cardColor,
                   foregroundColor: AsclepioTheme.primary,
@@ -161,7 +186,7 @@ class _ExerciseSelectorSheet extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.all(16),
-              child: Text("Select Exercise",
+              child: Text("Selecionar Exercício",
                   style: Theme.of(context).textTheme.titleLarge),
             ),
             Expanded(

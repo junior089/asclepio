@@ -139,7 +139,7 @@ class _RunTrackerPageState extends State<RunTrackerPage> {
       final calories = (_distanceKm * 60).toInt(); // Rough estimate
 
       final activityData = {
-        'type': 'Run',
+        'type': 'Corrida',
         'durationSeconds': _seconds,
         'distance': double.parse(_distanceKm.toStringAsFixed(2)),
         'pace': double.parse(paceVal.toStringAsFixed(2)),
@@ -348,7 +348,8 @@ class _RunTrackerPageState extends State<RunTrackerPage> {
                       else
                         Expanded(
                             child: GradientButton(
-                                text: 'START RUN', onPressed: _toggleTracking)),
+                                text: 'INICIAR CORRIDA',
+                                onPressed: _toggleTracking)),
                       if (_isPaused) ...[
                         const SizedBox(width: 16),
                         Expanded(
@@ -361,7 +362,7 @@ class _RunTrackerPageState extends State<RunTrackerPage> {
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: const Center(
-                                  child: Text("FINISH",
+                                  child: Text("FINALIZAR",
                                       style: TextStyle(
                                           color: Colors.white,
                                           fontWeight: FontWeight.bold))),

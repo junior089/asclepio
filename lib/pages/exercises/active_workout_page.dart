@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../theme/asclepio_theme.dart';
 import '../../data/gym_exercises_data.dart';
 import 'dart:async';
@@ -16,15 +17,16 @@ class _ActiveWorkoutPageState extends State<ActiveWorkoutPage> {
   final List<_ActiveExercise> _exercises = [];
   Timer? _timer;
   int _secondsElapsed = 0;
-  final bool _isPaused = false;
+  bool _isPaused = false;
 
+  Timer? _restTimer;
+  int _restSeconds = 0;
+  bool _restActive = false;
+  final int _restDuration = 90;
   @override
   void initState() {
     super.initState();
     _startTimer();
-    _exercises
-        .add(_ActiveExercise(GymExercisesData.exercises[0]));
-    _exercises.add(_ActiveExercise(GymExercisesData.exercises[5])); 
   }
 
   void _startTimer() {
@@ -35,10 +37,93 @@ class _ActiveWorkoutPageState extends State<ActiveWorkoutPage> {
     });
   }
 
+  void _togglePause() {
+    setState(() => _isPaused = !_isPaused);
+  }
+
+  void _addExerciseDialog() async {
+    final exercise = await showModalBottomSheet<GymExercise>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.85,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (_, scrollCtrl) {
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text('Selecionar Exercício',
+                    style: Theme.of(context).textTheme.titleLarge),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  controller: scrollCtrl,
+                  itemCount: GymExercisesData.exercises.length,
+                  itemBuilder: (context, index) {
+                    final ex = GymExercisesData.exercises[index];
+                    return ListTile(
+                      leading: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: AsclepioTheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.fitness_center,
+                            color: AsclepioTheme.primary, size: 20),
+                      ),
+                      title: Text(ex.name,
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text('${ex.muscleGroup} • ${ex.equipment}'),
+                      onTap: () => Navigator.pop(context, ex),
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    if (exercise != null) {
+      setState(() => _exercises.add(_ActiveExercise(exercise)));
+    }
+  }
+
   @override
   void dispose() {
     _timer?.cancel();
+    _restTimer?.cancel();
     super.dispose();
+  }
+
+  void _startRestTimer() {
+    _restTimer?.cancel();
+    setState(() {
+      _restActive = true;
+      _restSeconds = _restDuration;
+    });
+    _restTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_restSeconds > 0) {
+        setState(() => _restSeconds--);
+      } else {
+        _restTimer?.cancel();
+        setState(() => _restActive = false);
+        HapticFeedback.heavyImpact();
+      }
+    });
+  }
+
+  void _stopRestTimer() {
+    _restTimer?.cancel();
+    setState(() => _restActive = false);
   }
 
   String _formatTime(int seconds) {
@@ -88,6 +173,8 @@ class _ActiveWorkoutPageState extends State<ActiveWorkoutPage> {
       }
 
       final duration = (_secondsElapsed / 60).round();
+      final weight = context.read<AppProvider>().userWeight;
+      final calories = (5.0 * weight * (duration / 60)).round();
 
       context.read<AppProvider>().addGymWorkout(
             primaryGroup,
@@ -96,10 +183,12 @@ class _ActiveWorkoutPageState extends State<ActiveWorkoutPage> {
             totalVolume,
           );
 
+      context.read<AppProvider>().activeCalories += calories;
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Treino salvo com sucesso!'),
+          SnackBar(
+            content: Text('Treino salvo! ~$calories kcal queimadas'),
             backgroundColor: AsclepioTheme.success,
             behavior: SnackBarBehavior.floating,
           ),
@@ -120,7 +209,7 @@ class _ActiveWorkoutPageState extends State<ActiveWorkoutPage> {
         ),
         title: Column(
           children: [
-            const Text('Active Workout', style: TextStyle(fontSize: 16)),
+            const Text('Treino Ativo', style: TextStyle(fontSize: 16)),
             Text(_formatTime(_secondsElapsed),
                 style: const TextStyle(
                     fontSize: 24,
@@ -129,31 +218,81 @@ class _ActiveWorkoutPageState extends State<ActiveWorkoutPage> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: Icon(_isPaused ? Icons.play_arrow : Icons.pause),
+            onPressed: _togglePause,
+            tooltip: _isPaused ? 'Retomar' : 'Pausar',
+          ),
           TextButton(
             onPressed: _finishWorkout,
-            child: const Text('FINISH',
+            child: const Text('FINALIZAR',
                 style: TextStyle(
                     fontWeight: FontWeight.bold, color: AsclepioTheme.success)),
           )
         ],
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _exercises.length + 1,
-        itemBuilder: (context, index) {
-          if (index == _exercises.length) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: OutlinedButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.add),
-                label: const Text('Add Exercise'),
+      body: _exercises.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.fitness_center,
+                      size: 64, color: Colors.grey.shade400),
+                  const SizedBox(height: 16),
+                  Text('Adicione exercícios para começar',
+                      style:
+                          TextStyle(fontSize: 16, color: Colors.grey.shade600)),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: _addExerciseDialog,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Adicionar Exercício'),
+                  ),
+                ],
               ),
-            );
-          }
-          return _ActiveExerciseCard(data: _exercises[index]);
-        },
-      ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _exercises.length + 1,
+              itemBuilder: (context, index) {
+                if (index == _exercises.length) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    child: OutlinedButton.icon(
+                      onPressed: _addExerciseDialog,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Adicionar Exercício'),
+                    ),
+                  );
+                }
+                return _ActiveExerciseCard(
+                  data: _exercises[index],
+                  onRemove: () => setState(() => _exercises.removeAt(index)),
+                );
+              },
+            ),
+      floatingActionButton: _restActive
+          ? FloatingActionButton.extended(
+              onPressed: _stopRestTimer,
+              backgroundColor: AsclepioTheme.primary,
+              icon: const Icon(Icons.timer, color: Colors.white),
+              label: Text(
+                '${_restSeconds}s',
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18),
+              ),
+            )
+          : _exercises.isNotEmpty
+              ? FloatingActionButton(
+                  mini: true,
+                  onPressed: _startRestTimer,
+                  backgroundColor: AsclepioTheme.secondary,
+                  tooltip: 'Descanso',
+                  child: const Icon(Icons.timer, color: Colors.white),
+                )
+              : null,
     );
   }
 }
@@ -161,9 +300,7 @@ class _ActiveWorkoutPageState extends State<ActiveWorkoutPage> {
 class _ActiveExercise {
   final GymExercise exercise;
   List<_ExerciseSet> sets = [
-    _ExerciseSet(kg: 20, reps: 12),
-    _ExerciseSet(kg: 20, reps: 12),
-    _ExerciseSet(kg: 20, reps: 12),
+    _ExerciseSet(kg: 0, reps: 12),
   ];
 
   _ActiveExercise(this.exercise);
@@ -178,7 +315,8 @@ class _ExerciseSet {
 
 class _ActiveExerciseCard extends StatefulWidget {
   final _ActiveExercise data;
-  const _ActiveExerciseCard({required this.data});
+  final VoidCallback? onRemove;
+  const _ActiveExerciseCard({required this.data, this.onRemove});
 
   @override
   State<_ActiveExerciseCard> createState() => _ActiveExerciseCardState();
@@ -195,24 +333,41 @@ class _ActiveExerciseCardState extends State<_ActiveExerciseCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(widget.data.exercise.name,
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(widget.data.exercise.name,
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold)),
+                ),
+                if (widget.onRemove != null)
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: widget.onRemove,
+                    color: Colors.grey,
+                  ),
+              ],
+            ),
+            Text(widget.data.exercise.muscleGroup,
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
             const SizedBox(height: 16),
             const Row(
               children: [
                 SizedBox(
                     width: 30,
-                    child: Text("Set",
-                        style: TextStyle(fontWeight: FontWeight.bold))),
+                    child: Text('Série',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 12))),
                 Expanded(
                     child: Center(
-                        child: Text("kg",
-                            style: TextStyle(fontWeight: FontWeight.bold)))),
+                        child: Text('kg',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 12)))),
                 Expanded(
                     child: Center(
-                        child: Text("Reps",
-                            style: TextStyle(fontWeight: FontWeight.bold)))),
+                        child: Text('Reps',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 12)))),
                 SizedBox(width: 40, child: Icon(Icons.check, size: 20)),
               ],
             ),
@@ -221,7 +376,7 @@ class _ActiveExerciseCardState extends State<_ActiveExerciseCard> {
               final i = entry.key;
               final set = entry.value;
               return Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.symmetric(vertical: 4),
                 color: set.completed
                     ? AsclepioTheme.success.withValues(alpha: 0.1)
                     : null,
@@ -229,36 +384,65 @@ class _ActiveExerciseCardState extends State<_ActiveExerciseCard> {
                   children: [
                     SizedBox(
                         width: 30,
-                        child: Text("${i + 1}",
+                        child: Text('${i + 1}',
                             style:
                                 const TextStyle(fontWeight: FontWeight.bold))),
                     Expanded(
                       child: Center(
-                        child: Container(
+                        child: SizedBox(
                           width: 60,
                           height: 36,
-                          decoration: BoxDecoration(
-                              color: Theme.of(context).scaffoldBackgroundColor,
-                              borderRadius: BorderRadius.circular(8)),
-                          alignment: Alignment.center,
-                          child: Text(set.kg.toStringAsFixed(0),
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold)),
+                          child: TextField(
+                            textAlign: TextAlign.center,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              contentPadding: EdgeInsets.zero,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide.none,
+                              ),
+                              filled: true,
+                              fillColor:
+                                  Theme.of(context).scaffoldBackgroundColor,
+                            ),
+                            controller: TextEditingController(
+                                text: set.kg.toStringAsFixed(0)),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 14),
+                            onChanged: (v) {
+                              set.kg = double.tryParse(v) ?? 0;
+                            },
+                          ),
                         ),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Center(
-                        child: Container(
+                        child: SizedBox(
                           width: 60,
                           height: 36,
-                          decoration: BoxDecoration(
-                              color: Theme.of(context).scaffoldBackgroundColor,
-                              borderRadius: BorderRadius.circular(8)),
-                          alignment: Alignment.center,
-                          child: Text("${set.reps}",
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold)),
+                          child: TextField(
+                            textAlign: TextAlign.center,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              contentPadding: EdgeInsets.zero,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: BorderSide.none,
+                              ),
+                              filled: true,
+                              fillColor:
+                                  Theme.of(context).scaffoldBackgroundColor,
+                            ),
+                            controller:
+                                TextEditingController(text: '${set.reps}'),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 14),
+                            onChanged: (v) {
+                              set.reps = int.tryParse(v) ?? 0;
+                            },
+                          ),
                         ),
                       ),
                     ),
@@ -280,10 +464,13 @@ class _ActiveExerciseCardState extends State<_ActiveExerciseCard> {
               child: TextButton(
                   onPressed: () {
                     setState(() {
-                      widget.data.sets.add(_ExerciseSet(kg: 0, reps: 0));
+                      final lastKg = widget.data.sets.isNotEmpty
+                          ? widget.data.sets.last.kg
+                          : 0.0;
+                      widget.data.sets.add(_ExerciseSet(kg: lastKg, reps: 12));
                     });
                   },
-                  child: const Text('+ Add Set')),
+                  child: const Text('+ Adicionar Série')),
             ),
           ],
         ),

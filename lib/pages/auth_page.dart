@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/asclepio_theme.dart';
 import '../widgets/health_components.dart';
-import 'onboarding_page.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
@@ -49,13 +48,22 @@ class _AuthPageState extends State<AuthPage>
   Future<void> _submit() async {
     final email = _emailCtrl.text.trim();
     final pass = _passCtrl.text.trim();
+    final name = _nameCtrl.text.trim();
 
     if (email.isEmpty || pass.isEmpty) {
       _snack('Preencha os campos', isError: true);
       return;
     }
+    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+$').hasMatch(email)) {
+      _snack('E-mail inválido', isError: true);
+      return;
+    }
     if (pass.length < 6) {
       _snack('Senha muito curta (mínimo 6)', isError: true);
+      return;
+    }
+    if (!_isLogin && name.isEmpty) {
+      _snack('Preencha seu nome', isError: true);
       return;
     }
 
@@ -66,27 +74,47 @@ class _AuthPageState extends State<AuthPage>
         await Supabase.instance.client.auth
             .signInWithPassword(email: email, password: pass);
       } else {
-        await Supabase.instance.client.auth
-            .signUp(email: email, password: pass);
+        await Supabase.instance.client.auth.signUp(
+          email: email,
+          password: pass,
+          data: {'name': name},
+        );
       }
 
       if (!mounted) return;
-      // Success transition
-      Navigator.pushReplacement(
-        context,
-        PageRouteBuilder(
-          pageBuilder: (_, __, ___) => const OnboardingPage(),
-          transitionsBuilder: (_, anim, __, child) =>
-              FadeTransition(opacity: anim, child: child),
-        ),
-      );
+      // Let AuthGate handle navigation (checks onboarding status)
+      Navigator.of(context).popUntil((route) => route.isFirst);
     } on AuthException catch (e) {
-      _snack(e.message, isError: true);
+      _snack(_translateAuthError(e.message), isError: true);
     } catch (e) {
-      _snack('Erro inesperado', isError: true);
+      _snack('Erro inesperado: $e', isError: true);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  String _translateAuthError(String msg) {
+    final lower = msg.toLowerCase();
+    if (lower.contains('already registered') ||
+        lower.contains('already been registered')) {
+      return 'Este e-mail já está cadastrado. Tente fazer login.';
+    }
+    if (lower.contains('invalid login')) {
+      return 'E-mail ou senha incorretos.';
+    }
+    if (lower.contains('email not confirmed')) {
+      return 'E-mail não confirmado. Verifique sua caixa de entrada.';
+    }
+    if (lower.contains('rate limit') || lower.contains('too many requests')) {
+      return 'Muitas tentativas. Aguarde alguns minutos.';
+    }
+    if (lower.contains('password')) {
+      return 'Senha inválida. Use pelo menos 6 caracteres.';
+    }
+    if (lower.contains('email')) {
+      return 'E-mail inválido.';
+    }
+    return msg; // Return original if no translation found
   }
 
   void _snack(String msg, {bool isError = false}) {
@@ -154,7 +182,7 @@ class _AuthPageState extends State<AuthPage>
                                 ),
                       ),
                       Text(
-                        'ELITE TRAINING',
+                        'SUA SAÚDE EM PRIMEIRO LUGAR',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
                               color:
@@ -178,8 +206,8 @@ class _AuthPageState extends State<AuthPage>
                         padding: const EdgeInsets.all(4),
                         child: Row(
                           children: [
-                            _toggleBtn('Login', true),
-                            _toggleBtn('Sign Up', false),
+                            _toggleBtn('Entrar', true),
+                            _toggleBtn('Criar Conta', false),
                           ],
                         ),
                       ),
@@ -199,7 +227,7 @@ class _AuthPageState extends State<AuthPage>
                                     textCapitalization:
                                         TextCapitalization.words,
                                     decoration: const InputDecoration(
-                                      labelText: 'FULL NAME',
+                                      labelText: 'NOME COMPLETO',
                                       prefixIcon: Icon(Icons.person_outline),
                                     ),
                                   ),
@@ -212,7 +240,7 @@ class _AuthPageState extends State<AuthPage>
                         controller: _emailCtrl,
                         keyboardType: TextInputType.emailAddress,
                         decoration: const InputDecoration(
-                          labelText: 'EMAIL',
+                          labelText: 'E-MAIL',
                           prefixIcon: Icon(Icons.email_outlined),
                         ),
                       ),
@@ -222,7 +250,7 @@ class _AuthPageState extends State<AuthPage>
                         controller: _passCtrl,
                         obscureText: _obscure,
                         decoration: InputDecoration(
-                          labelText: 'PASSWORD',
+                          labelText: 'SENHA',
                           prefixIcon: const Icon(Icons.lock_outline),
                           suffixIcon: IconButton(
                             icon: Icon(_obscure
@@ -238,7 +266,7 @@ class _AuthPageState extends State<AuthPage>
 
                       // ── Action ──────────────────────────────────────────────
                       GradientButton(
-                        text: _isLogin ? 'UNLOCK ACCESSS' : 'JOIN THE CLUB',
+                        text: _isLogin ? 'ENTRAR' : 'CRIAR CONTA',
                         onPressed: _submit,
                         isLoading: _loading,
                         icon: Icons.arrow_forward,
@@ -249,9 +277,9 @@ class _AuthPageState extends State<AuthPage>
                       if (_isLogin)
                         Center(
                           child: TextButton(
-                            onPressed: () {},
+                            onPressed: _forgotPassword,
                             child: Text(
-                              'Forgot Password?',
+                              'Esqueceu a senha?',
                               style: TextStyle(
                                 color: Theme.of(context)
                                     .textTheme
@@ -301,5 +329,20 @@ class _AuthPageState extends State<AuthPage>
         ),
       ),
     );
+  }
+
+  Future<void> _forgotPassword() async {
+    final email = _emailCtrl.text.trim();
+    if (email.isEmpty) {
+      _snack('Digite seu e-mail primeiro', isError: true);
+      return;
+    }
+    try {
+      await Supabase.instance.client.auth.resetPasswordForEmail(email);
+      if (!mounted) return;
+      _snack('Link de recuperação enviado para $email');
+    } catch (e) {
+      _snack('Erro ao enviar e-mail: $e', isError: true);
+    }
   }
 }

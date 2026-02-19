@@ -8,29 +8,18 @@ class CardioTrackingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor:
-          AsclepioTheme.backgroundDark, // Full screen immersive feel
+      backgroundColor: AsclepioTheme.backgroundDark,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Background Image (Placeholder)
-          Opacity(
-            opacity: 0.6,
-            child: Image.network(
-              // In production use asset
-              'https://images.unsplash.com/photo-1502904550040-7534597429ae?q=80&w=1000&auto=format&fit=crop',
-              fit: BoxFit.cover,
-              errorBuilder: (c, e, s) => Container(color: Colors.grey[900]),
-            ),
-          ),
-
-          // Gradient Overlay
+          // Background Gradient
           Container(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  Colors.black.withValues(alpha: 0.1),
-                  Colors.black.withValues(alpha: 0.9),
+                  Color(0xFF1A1A2E),
+                  Color(0xFF16213E),
+                  Color(0xFF0F3460),
                 ],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
@@ -45,13 +34,9 @@ class CardioTrackingPage extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.end,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Back Button
-                  const Positioned(
-                      top: 0, left: 0, child: BackButton(color: Colors.white)),
-
                   const Spacer(),
 
-                  const Text('OUTDOOR RUN',
+                  const Text('CORRIDA\nAO AR LIVRE',
                       style: TextStyle(
                           fontFamily: 'Roboto',
                           fontSize: 48,
@@ -61,20 +46,20 @@ class CardioTrackingPage extends StatelessWidget {
                           letterSpacing: -2)),
                   const SizedBox(height: 16),
                   const Text(
-                    'Track your pace, distance and route in real-time.',
+                    'Acompanhe seu ritmo, distância e rota em tempo real.',
                     style: TextStyle(color: Colors.white70, fontSize: 16),
                   ),
 
                   const SizedBox(height: 40),
 
-                  // Start Button
+                  // Botão Iniciar
                   SizedBox(
                     width: double.infinity,
                     height: 64,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AsclepioTheme.primary,
-                        foregroundColor: Colors.black,
+                        foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(32)),
                       ),
@@ -82,7 +67,7 @@ class CardioTrackingPage extends StatelessWidget {
                           context,
                           MaterialPageRoute(
                               builder: (_) => const RunTrackerPage())),
-                      child: const Text('GO RUN',
+                      child: const Text('INICIAR CORRIDA',
                           style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w900,
@@ -95,6 +80,7 @@ class CardioTrackingPage extends StatelessWidget {
             ),
           ),
 
+          // Botão voltar
           Positioned(
             top: 40,
             left: 16,
